@@ -6,6 +6,7 @@
   <title>CarneTs Grupo Read</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="/_sdk/element_sdk.js"></script>
   <script src="/_sdk/data_sdk.js"></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
@@ -79,6 +80,38 @@
       display: flex;
       align-items: center;
       gap: 12px;
+    }
+
+    .auth-status {
+      font-size: 12px;
+      font-weight: 600;
+      color: #e2e8f0;
+      background: rgba(15, 23, 42, 0.6);
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(148, 163, 184, 0.4);
+    }
+
+    .auth-btn {
+      padding: 8px 14px;
+      border-radius: 8px;
+      border: 1px solid #2563eb;
+      background: #2563eb;
+      color: white;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .auth-btn.secondary {
+      background: transparent;
+      color: #e2e8f0;
+      border-color: rgba(226, 232, 240, 0.6);
+    }
+
+    .auth-btn:hover {
+      filter: brightness(1.05);
     }
 
     /* Main Layout */
@@ -184,6 +217,11 @@
       background: #3b82f6;
       border-color: #3b82f6;
       color: white;
+    }
+
+    button:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
     }
 
     .toolbar-btn svg {
@@ -651,7 +689,10 @@
     <img src="docs/fcbba5_02a8a33f7c8c488b85759f33ee9af356~mv2.gif" alt="Logo">
     <span class="logo-text">Carnets Grupo Read</span>
      </div>
-    <div class="header-actions"></div>
+    <div class="header-actions">
+     <span class="auth-status" id="auth-status">Cargando...</span>
+     <button class="auth-btn secondary" id="auth-logout-btn" type="button" style="display: none;">Cerrar sesion</button>
+    </div>
   </header><!-- Main Container -->
   <div class="main-container"><!-- Sidebar Menu -->
    <aside class="sidebar scrollbar-thin">
@@ -782,7 +823,7 @@
       <div class="property-group" style="margin-top: 16px;">
        <input type="text" class="property-input" id="user-search" placeholder="Buscar usuario...">
       </div>
-      <div class="property-group" style="margin-top: 16px;"><button id="new-user-btn" style="width: 100%; padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s;" onclick="document.getElementById('user-modal').classList.add('active')">+ Nuevo Usuario</button>
+      <div class="property-group" style="margin-top: 16px;"><button id="new-user-btn" style="width: 100%; padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s;">+ Nuevo Usuario</button>
       </div>
       <div class="users-list" id="users-list" style="margin-top: 16px;"></div>
     </div><!-- Opciones Panel -->
@@ -834,6 +875,13 @@
    </div>
   </div>
   <script>
+    const SUPABASE_URL = 'https://yexvmkxnaeipovgcjpci.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlleHZta3huYWVpcG92Z2NqcGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjUxNzYsImV4cCI6MjA4NjQ0MTE3Nn0.Od5w1Bs-XvADeNJJum_MIBHWaxPWhWuBWGz5z5BLHQc';
+    const supabaseClient = window.supabase
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+    let currentSession = null;
+    let currentProfile = null;
     let canvas = null;
     let history = [];
     let historyStep = 0;
@@ -855,6 +903,121 @@
     };
 
     const svgTemplateUrl = 'docs/Carnet%20Corporativo_nuevo%20diseño_Tiro.svg';
+
+    const authLogoutBtn = document.getElementById('auth-logout-btn');
+    const authStatus = document.getElementById('auth-status');
+
+    function isCloudEnabled() {
+      return !!(supabaseClient && currentSession);
+    }
+
+    function hasRole(role) {
+      return currentProfile && currentProfile.role === role;
+    }
+
+    function canManageUsers() {
+      return currentProfile && (currentProfile.role === 'admin' || currentProfile.role === 'operator');
+    }
+
+    function canManageTemplates() {
+      return currentProfile && currentProfile.role === 'admin';
+    }
+
+    function updateAuthUi() {
+      if (!authStatus || !authLogoutBtn) return;
+      if (currentSession && currentSession.user) {
+        const roleLabel = currentProfile?.role ? ` (${currentProfile.role})` : '';
+        authStatus.textContent = `${currentSession.user.email || 'Sesion activa'}${roleLabel}`;
+        authLogoutBtn.style.display = 'inline-flex';
+      } else {
+        authStatus.textContent = 'Sin sesion';
+        authLogoutBtn.style.display = 'none';
+      }
+
+      const newUserBtn = document.getElementById('new-user-btn');
+      const createTemplateButton = document.getElementById('create-template-btn');
+      const assignButton = document.getElementById('assign-user-btn');
+      if (newUserBtn) newUserBtn.disabled = !canManageUsers();
+      if (createTemplateButton) createTemplateButton.disabled = !canManageTemplates();
+      if (assignButton) assignButton.disabled = !isCloudEnabled();
+    }
+
+    async function ensureProfile(user) {
+      if (!supabaseClient || !user) return;
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (data && !error) {
+        currentProfile = data;
+        return;
+      }
+
+      const { data: inserted } = await supabaseClient
+        .from('profiles')
+        .insert({ id: user.id, email: user.email, role: 'operator' })
+        .select()
+        .single();
+      currentProfile = inserted || null;
+    }
+
+    async function loadUsersFromCloud() {
+      if (!isCloudEnabled()) return;
+      const { data, error } = await supabaseClient
+        .from('carnet_users')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        users = data;
+      }
+    }
+
+    async function loadTemplatesFromCloud() {
+      if (!isCloudEnabled()) return;
+      const { data, error } = await supabaseClient
+        .from('templates')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        templates = data;
+      }
+    }
+
+    async function syncCloudData() {
+      await Promise.all([loadUsersFromCloud(), loadTemplatesFromCloud()]);
+      renderUsers();
+      renderUserSelect();
+      renderTemplates();
+    }
+
+    async function initAuth() {
+      if (!supabaseClient) return;
+      const { data } = await supabaseClient.auth.getSession();
+      currentSession = data?.session || null;
+      if (!currentSession?.user) {
+        window.location.href = 'login.html';
+        return;
+      }
+
+      await ensureProfile(currentSession.user);
+      await syncCloudData();
+      updateAuthUi();
+
+      supabaseClient.auth.onAuthStateChange(async (_event, session) => {
+        currentSession = session;
+        if (session?.user) {
+          await ensureProfile(session.user);
+          await syncCloudData();
+        } else {
+          currentProfile = null;
+          window.location.href = 'login.html';
+          return;
+        }
+        updateAuthUi();
+      });
+    }
 
     function normalizePhotoFrame(photoObj) {
       if (!photoObj || photoObj.type !== 'image' || !photoObj.clipPath) return;
@@ -1365,6 +1528,29 @@
     const assignUserBtn = document.getElementById('assign-user-btn');
     const userSearchInput = document.getElementById('user-search');
 
+    if (authLogoutBtn) {
+      authLogoutBtn.addEventListener('click', async () => {
+        if (!supabaseClient) return;
+        await supabaseClient.auth.signOut();
+        window.location.href = 'login.html';
+      });
+    }
+
+    const newUserBtn = document.getElementById('new-user-btn');
+    if (newUserBtn) {
+      newUserBtn.addEventListener('click', () => {
+        if (!isCloudEnabled()) {
+          alert('Inicia sesion para crear usuarios.');
+          return;
+        }
+        if (!canManageUsers()) {
+          alert('No tienes permisos para crear usuarios.');
+          return;
+        }
+        document.getElementById('user-modal').classList.add('active');
+      });
+    }
+
     function updateTextElement(element, value) {
       if (!element) return;
       element.text = value;
@@ -1725,7 +1911,6 @@
     // Usuarios
     document.getElementById('save-user-btn').addEventListener('click', async () => {
       const user = {
-        id: 'user_' + Date.now(),
         nombre: document.getElementById('user-nombre').value,
         cargo: document.getElementById('user-cargo').value,
         departamento: document.getElementById('user-departamento').value,
@@ -1749,6 +1934,7 @@
       };
 
       const saveUserLocally = () => {
+        user.id = 'user_' + Date.now();
         users.push(user);
         localStorage.setItem(localUsersKey, JSON.stringify(users));
         renderUsers();
@@ -1757,22 +1943,36 @@
         clearUserForm();
       };
 
-      if (window.dataSdk) {
+      if (isCloudEnabled()) {
         try {
-          const result = await window.dataSdk.create(user);
-          if (result && result.isOk) {
-            alert('Usuario guardado correctamente');
-            clearUserForm();
-            renderUserSelect();
+          const { data, error } = await supabaseClient
+            .from('carnet_users')
+            .insert({
+              nombre: user.nombre,
+              cargo: user.cargo,
+              departamento: user.departamento,
+              telefono: user.telefono,
+              email: user.email
+            })
+            .select()
+            .single();
+          if (error) {
+            alert(error.message || 'No se pudo guardar el usuario.');
             return;
           }
+          users = [data, ...users];
+          renderUsers();
+          renderUserSelect();
+          alert('Usuario guardado correctamente');
+          clearUserForm();
+          return;
         } catch (error) {
-          // fallback to local storage
+          alert('No se pudo guardar el usuario en la nube.');
+          return;
         }
-        saveUserLocally();
-      } else {
-        saveUserLocally();
       }
+
+      saveUserLocally();
     });
 
     function renderUsers() {
@@ -1793,15 +1993,18 @@
       }
 
       filteredUsers.forEach(user => {
+        const allowManage = canManageUsers();
         const div = document.createElement('div');
         div.className = 'user-item';
         div.innerHTML = `
           <div class="user-name">${user.nombre}</div>
           <div class="user-role">${user.cargo}</div>
+          ${allowManage ? `
           <div style="margin-top: 8px; display: flex; gap: 8px;">
             <button style="padding: 6px 10px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px;" onclick="loadUserCard('${user.id}')">Editar carnet</button>
             <button style="padding: 6px 10px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px;" onclick="deleteUser('${user.id}')">Eliminar</button>
           </div>
+          ` : ''}
         `;
         list.appendChild(div);
       });
@@ -1825,10 +2028,26 @@
     async function updateUserData(userId, updates) {
       const user = users.find(u => u.id === userId);
       if (!user) return;
-      const updated = { ...user, ...updates };
-      if (window.dataSdk && typeof window.dataSdk.update === 'function') {
-        await window.dataSdk.update(userId, updated);
+      const mappedUpdates = { ...updates };
+      if (Object.prototype.hasOwnProperty.call(mappedUpdates, 'carnetData')) {
+        mappedUpdates.carnet_data = mappedUpdates.carnetData;
+        delete mappedUpdates.carnetData;
+      }
+
+      if (isCloudEnabled()) {
+        const { data, error } = await supabaseClient
+          .from('carnet_users')
+          .update(mappedUpdates)
+          .eq('id', userId)
+          .select()
+          .single();
+        if (error) {
+          alert(error.message || 'No se pudo actualizar el usuario.');
+          return;
+        }
+        users = users.map(u => (u.id === userId ? data : u));
       } else {
+        const updated = { ...user, ...updates };
         users = users.map(u => (u.id === userId ? updated : u));
         localStorage.setItem(localUsersKey, JSON.stringify(users));
       }
@@ -1839,6 +2058,10 @@
     if (assignUserBtn) {
       assignUserBtn.addEventListener('click', async () => {
         if (!userSelect || !userSelect.value) return;
+        if (!isCloudEnabled()) {
+          alert('Inicia sesion para asignar carnets en la nube.');
+          return;
+        }
         const carnetData = JSON.stringify(canvas.toJSON());
         await updateUserData(userSelect.value, { carnetData });
         alert('Carnet asignado al usuario.');
@@ -1847,8 +2070,9 @@
 
     window.loadUserCard = function(userId) {
       const user = users.find(u => u.id === userId);
-      if (!user || !user.carnetData) return;
-      canvas.loadFromJSON(JSON.parse(user.carnetData), () => {
+      const carnetData = user?.carnet_data || user?.carnetData;
+      if (!user || !carnetData) return;
+      canvas.loadFromJSON(JSON.parse(carnetData), () => {
         canvas.renderAll();
         saveHistory();
         currentModule = 'carnet';
@@ -1858,14 +2082,25 @@
 
     window.deleteUser = async function(userId) {
       if (!confirm('¿Eliminar este usuario?')) return;
-      if (window.dataSdk && typeof window.dataSdk.delete === 'function') {
-        await window.dataSdk.delete(userId);
-      } else {
+      if (isCloudEnabled()) {
+        const { error } = await supabaseClient
+          .from('carnet_users')
+          .delete()
+          .eq('id', userId);
+        if (error) {
+          alert(error.message || 'No se pudo eliminar el usuario.');
+          return;
+        }
         users = users.filter(u => u.id !== userId);
-        localStorage.setItem(localUsersKey, JSON.stringify(users));
         renderUsers();
         renderUserSelect();
+        return;
       }
+
+      users = users.filter(u => u.id !== userId);
+      localStorage.setItem(localUsersKey, JSON.stringify(users));
+      renderUsers();
+      renderUserSelect();
     };
 
     // Plantillas
@@ -1877,7 +2112,7 @@
 
     function openTemplateModal(template = null) {
       editingTemplateId = template ? template.id : null;
-      templateLogoData = template ? template.logoData || null : null;
+      templateLogoData = template ? (template.logo_data || template.logoData || null) : null;
       templateNameInput.value = template ? template.name : '';
       if (templateLogoPreview) {
         if (templateLogoData) {
@@ -1894,7 +2129,17 @@
     }
 
     if (createTemplateBtn) {
-      createTemplateBtn.addEventListener('click', () => openTemplateModal());
+      createTemplateBtn.addEventListener('click', () => {
+        if (!isCloudEnabled()) {
+          alert('Inicia sesion para crear plantillas.');
+          return;
+        }
+        if (!canManageTemplates()) {
+          alert('Solo un administrador puede crear plantillas.');
+          return;
+        }
+        openTemplateModal();
+      });
     }
 
     if (templateLogoInput) {
@@ -1917,6 +2162,59 @@
       const name = templateNameInput.value.trim();
       if (!name) return;
 
+      const payload = {
+        name,
+        logo_data: templateLogoData,
+        data_json: JSON.stringify(canvas.toJSON())
+      };
+
+      const closeAndReset = () => {
+        templateModal.classList.remove('active');
+        templateNameInput.value = '';
+        if (templateLogoPreview) {
+          templateLogoPreview.src = '';
+          templateLogoPreview.style.display = 'none';
+        }
+        templateLogoData = null;
+        editingTemplateId = null;
+      };
+
+      if (isCloudEnabled() && canManageTemplates()) {
+        if (editingTemplateId) {
+          supabaseClient
+            .from('templates')
+            .update(payload)
+            .eq('id', editingTemplateId)
+            .select()
+            .single()
+            .then(({ data, error }) => {
+              if (error) {
+                alert(error.message || 'No se pudo actualizar la plantilla.');
+                return;
+              }
+              templates = templates.map(t => (t.id === editingTemplateId ? data : t));
+              renderTemplates();
+              closeAndReset();
+            });
+        } else {
+          supabaseClient
+            .from('templates')
+            .insert(payload)
+            .select()
+            .single()
+            .then(({ data, error }) => {
+              if (error) {
+                alert(error.message || 'No se pudo guardar la plantilla.');
+                return;
+              }
+              templates = [data, ...templates];
+              renderTemplates();
+              closeAndReset();
+            });
+        }
+        return;
+      }
+
       if (editingTemplateId) {
         templates = templates.map(t => t.id === editingTemplateId ? {
           ...t,
@@ -1936,15 +2234,7 @@
 
       localStorage.setItem('templates', JSON.stringify(templates));
       renderTemplates();
-
-      templateModal.classList.remove('active');
-      templateNameInput.value = '';
-      if (templateLogoPreview) {
-        templateLogoPreview.src = '';
-        templateLogoPreview.style.display = 'none';
-      }
-      templateLogoData = null;
-      editingTemplateId = null;
+      closeAndReset();
     });
 
     function renderTemplates() {
@@ -1957,10 +2247,18 @@
       }
 
       templates.forEach(template => {
+        const logoData = template.logo_data || template.logoData;
+        const allowManage = canManageTemplates();
         const div = document.createElement('div');
         div.style.cssText = 'padding: 12px; background: #f1f5f9; border-radius: 6px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px;';
-        const logo = template.logoData
-          ? `<img src="${template.logoData}" alt="logo" style="width: 40px; height: 40px; object-fit: contain; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff;">`
+        const logo = logoData
+          ? `<img src="${logoData}" alt="logo" style="width: 40px; height: 40px; object-fit: contain; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff;">`
+          : '';
+        const manageButtons = allowManage
+          ? `
+            <button onclick="editTemplate('${template.id}')" style="padding: 4px 8px; background: #0ea5e9; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">Editar</button>
+            <button onclick="deleteTemplate('${template.id}')" style="padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Eliminar</button>
+          `
           : '';
         div.innerHTML = `
           <div style="display: flex; align-items: center; gap: 8px;">
@@ -1969,8 +2267,7 @@
           </div>
           <div>
             <button onclick="loadTemplate('${template.id}')" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">Cargar</button>
-            <button onclick="editTemplate('${template.id}')" style="padding: 4px 8px; background: #0ea5e9; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">Editar</button>
-            <button onclick="deleteTemplate('${template.id}')" style="padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Eliminar</button>
+            ${manageButtons}
           </div>
         `;
         list.appendChild(div);
@@ -1980,7 +2277,9 @@
     window.loadTemplate = function(templateId) {
       const template = templates.find(t => t.id === templateId);
       if (template) {
-        canvas.loadFromJSON(JSON.parse(template.data), () => {
+        const templateData = template.data_json || template.data;
+        if (!templateData) return;
+        canvas.loadFromJSON(JSON.parse(templateData), () => {
           canvas.renderAll();
           saveHistory();
         });
@@ -1989,6 +2288,21 @@
 
     window.deleteTemplate = function(templateId) {
       if (confirm('¿Eliminar esta plantilla?')) {
+        if (isCloudEnabled() && canManageTemplates()) {
+          supabaseClient
+            .from('templates')
+            .delete()
+            .eq('id', templateId)
+            .then(({ error }) => {
+              if (error) {
+                alert(error.message || 'No se pudo eliminar la plantilla.');
+                return;
+              }
+              templates = templates.filter(t => t.id !== templateId);
+              renderTemplates();
+            });
+          return;
+        }
         templates = templates.filter(t => t.id !== templateId);
         localStorage.setItem('templates', JSON.stringify(templates));
         renderTemplates();
@@ -2068,27 +2382,17 @@
 
     // Listeners se asignan al crear el canvas
 
-    // Data SDK
-    const dataHandler = {
-      onDataChanged(data) {
-        users = data;
-        if (currentModule === 'usuarios') {
-          renderUsers();
-        }
-        renderUserSelect();
-      }
-    };
-
     // Initialize
     async function init() {
       initCanvas();
       setZoom(1.5);
 
-      if (window.dataSdk) {
-        await window.dataSdk.init(dataHandler);
-      } else {
+      await initAuth();
+
+      if (!isCloudEnabled()) {
         renderUsers();
         renderUserSelect();
+        renderTemplates();
       }
     }
 

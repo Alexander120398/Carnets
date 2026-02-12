@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="es">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Acceso - Carnets Grupo Read</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background: radial-gradient(circle at top, #e2e8f0 0%, #f8fafc 45%, #eef2f7 100%);
+      color: #0f172a;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .login-card {
+      width: min(420px, 100%);
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 25px 60px rgba(15, 23, 42, 0.12);
+      padding: 32px;
+      border: 1px solid #e2e8f0;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .logo img {
+      width: 36px;
+      height: 36px;
+      object-fit: contain;
+    }
+
+    .logo-text {
+      font-weight: 700;
+      font-size: 18px;
+    }
+
+    .title {
+      font-size: 22px;
+      font-weight: 700;
+      margin: 8px 0 6px;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: #64748b;
+      margin-bottom: 22px;
+    }
+
+    .input {
+      width: 100%;
+      padding: 12px 14px;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 14px;
+      margin-bottom: 12px;
+      transition: all 0.2s;
+    }
+
+    .input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .actions {
+      display: grid;
+      gap: 10px;
+      margin-top: 16px;
+    }
+
+    .btn {
+      padding: 12px;
+      border-radius: 8px;
+      border: none;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn.primary {
+      background: #2563eb;
+      color: white;
+    }
+
+    .btn.secondary {
+      background: #f1f5f9;
+      color: #0f172a;
+    }
+
+    .note {
+      margin-top: 12px;
+      font-size: 12px;
+      color: #64748b;
+      line-height: 1.5;
+    }
+
+    .error {
+      background: #fee2e2;
+      color: #b91c1c;
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-size: 12px;
+      margin-top: 10px;
+      display: none;
+    }
+  </style>
+ </head>
+ <body>
+  <div class="login-card">
+   <div class="logo">
+    <img src="docs/fcbba5_02a8a33f7c8c488b85759f33ee9af356~mv2.gif" alt="Logo">
+    <span class="logo-text">Carnets Grupo Read</span>
+   </div>
+   <div class="title">Iniciar sesion</div>
+   <div class="subtitle">Accede para ver usuarios, plantillas y carnets desde cualquier PC.</div>
+   <input class="input" id="email" type="email" placeholder="Email">
+   <input class="input" id="password" type="password" placeholder="Contrasena">
+   <div class="actions">
+    <button class="btn primary" id="login-btn" type="button">Entrar</button>
+    <button class="btn secondary" id="signup-btn" type="button">Crear cuenta</button>
+   </div>
+   <div class="error" id="error-box"></div>
+   <div class="note">
+    Si es tu primera vez, crea una cuenta y luego inicia sesion.
+   </div>
+  </div>
+
+  <script>
+    const SUPABASE_URL = 'https://yexvmkxnaeipovgcjpci.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlleHZta3huYWVpcG92Z2NqcGNpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA4NjUxNzYsImV4cCI6MjA4NjQ0MTE3Nn0.Od5w1Bs-XvADeNJJum_MIBHWaxPWhWuBWGz5z5BLHQc';
+    const supabaseClient = window.supabase
+      ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+      : null;
+
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
+    const loginBtn = document.getElementById('login-btn');
+    const signupBtn = document.getElementById('signup-btn');
+    const errorBox = document.getElementById('error-box');
+
+    function showError(message) {
+      if (!errorBox) return;
+      errorBox.textContent = message;
+      errorBox.style.display = 'block';
+    }
+
+    function clearError() {
+      if (!errorBox) return;
+      errorBox.textContent = '';
+      errorBox.style.display = 'none';
+    }
+
+    async function goToApp() {
+      window.location.href = 'index.html';
+    }
+
+    async function getExistingSession() {
+      if (!supabaseClient) return;
+      const { data } = await supabaseClient.auth.getSession();
+      if (data?.session) {
+        await goToApp();
+      }
+    }
+
+    if (loginBtn) {
+      loginBtn.addEventListener('click', async () => {
+        clearError();
+        if (!supabaseClient) {
+          showError('Supabase no esta configurado.');
+          return;
+        }
+        const email = (emailInput?.value || '').trim();
+        const password = passwordInput?.value || '';
+        if (!email || !password) {
+          showError('Completa email y contrasena.');
+          return;
+        }
+        const { error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) {
+          showError(error.message);
+          return;
+        }
+        await goToApp();
+      });
+    }
+
+    if (signupBtn) {
+      signupBtn.addEventListener('click', async () => {
+        clearError();
+        if (!supabaseClient) {
+          showError('Supabase no esta configurado.');
+          return;
+        }
+        const email = (emailInput?.value || '').trim();
+        const password = passwordInput?.value || '';
+        if (!email || !password) {
+          showError('Completa email y contrasena.');
+          return;
+        }
+        const { error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) {
+          showError(error.message);
+          return;
+        }
+        showError('Cuenta creada. Inicia sesion.');
+      });
+    }
+
+    getExistingSession();
+  </script>
+ </body>
+</html>
