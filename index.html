@@ -758,6 +758,12 @@
        </div>
       <div class="property-group"><label class="property-label">Alto (cm)</label> <input type="number" class="property-input" id="carnet-height" value="8.56" step="0.1">
        </div>
+      <div class="property-group"><label class="property-label">Plantilla base</label>
+       <select class="property-input" id="template-select">
+        <option value="tiro">Tiro</option>
+        <option value="retiro" selected>Retiro</option>
+       </select>
+      </div>
       </div>
       <div class="property-section"><span class="property-section-title">Fondo</span>
        <div class="property-group"><label class="property-label">Color de Fondo</label> <input type="color" class="property-input" id="bg-color" value="#ffffff">
@@ -925,10 +931,15 @@
       photoFrame: null
     };
 
-    const svgTemplateUrl = 'docs/Carnet%20Corporativo_nuevo%20diseño_Tiro.svg';
+    let svgTemplateUrl = 'docs/Carnet%20Corporativo_nuevo%20diseño_Retiro.svg';
+    const svgTemplateMap = {
+      tiro: 'docs/Carnet%20Corporativo_nuevo%20diseño_Tiro.svg',
+      retiro: 'docs/Carnet%20Corporativo_nuevo%20diseño_Retiro.svg'
+    };
 
     const authLogoutBtn = document.getElementById('auth-logout-btn');
     const authStatus = document.getElementById('auth-status');
+    const templateSelect = document.getElementById('template-select');
 
     function isCloudEnabled() {
       return !!(supabaseClient && currentSession);
@@ -1161,8 +1172,99 @@
       fabric.Object.prototype.objectCaching = false;
 
       canvasElement = canvas.lowerCanvasEl;
+      loadSvgTemplate(svgTemplateUrl);
 
-      fabric.loadSVGFromURL(svgTemplateUrl, (objects, options) => {
+      canvas.on('object:added', () => {
+        if (historyStep === history.length - 1) saveHistory();
+        renderLayers();
+      });
+
+      canvas.on('object:modified', () => {
+        saveHistory();
+        renderLayers();
+      });
+      canvas.on('object:moving', (event) => {
+        const target = event.target;
+        if (!target) return;
+
+        const SNAP_THRESHOLD = 6;
+        const canvasWidth = canvas.getWidth();
+        const canvasHeight = canvas.getHeight();
+        const bounds = target.getBoundingRect(true, true);
+
+        // Snap to canvas edges
+        if (Math.abs(bounds.left) < SNAP_THRESHOLD) {
+          target.left -= bounds.left;
+        }
+        if (Math.abs(bounds.top) < SNAP_THRESHOLD) {
+          target.top -= bounds.top;
+        }
+        const boundsRight = bounds.left + bounds.width;
+        const boundsBottom = bounds.top + bounds.height;
+        if (Math.abs(canvasWidth - boundsRight) < SNAP_THRESHOLD) {
+          target.left += canvasWidth - boundsRight;
+        }
+        if (Math.abs(canvasHeight - boundsBottom) < SNAP_THRESHOLD) {
+          target.top += canvasHeight - boundsBottom;
+        }
+
+        // Snap to canvas center
+        const center = canvas.getCenter();
+        const targetCenter = target.getCenterPoint();
+        if (Math.abs(targetCenter.x - center.left) < SNAP_THRESHOLD) {
+          target.setPositionByOrigin(new fabric.Point(center.left, targetCenter.y), 'center', 'center');
+        }
+        if (Math.abs(targetCenter.y - center.top) < SNAP_THRESHOLD) {
+          target.setPositionByOrigin(new fabric.Point(targetCenter.x, center.top), 'center', 'center');
+        }
+
+        target.setCoords();
+      });
+      canvas.on('selection:created', updatePropertyPanel);
+      canvas.on('selection:updated', updatePropertyPanel);
+      canvas.on('selection:cleared', () => {
+        const objects = canvas.getObjects();
+        if (lastActiveObject && objects.includes(lastActiveObject)) {
+          canvas.setActiveObject(lastActiveObject);
+          canvas.renderAll();
+          return;
+        }
+        renderLayers();
+        document.getElementById('carnet-panel').style.display = 'block';
+        selectedObject = null;
+        if (replaceImageGroup) replaceImageGroup.style.display = 'none';
+      });
+        renderLayers();
+
+      canvasWrapper.addEventListener('wheel', handleCanvasZoom, { passive: false });
+      if (canvas.upperCanvasEl) {
+      canvas.on('object:removed', () => renderLayers());
+        canvas.upperCanvasEl.addEventListener('wheel', handleCanvasZoom, { passive: false });
+      }
+
+      saveHistory();
+    }
+
+    function resetTemplateElements() {
+      templateElements = {
+        name: null,
+        code: null,
+        position: null,
+        photo: null,
+        logo: null,
+        photoFrame: null
+      };
+    }
+
+    function loadSvgTemplate(url) {
+      if (!canvas) return;
+      canvas.clear();
+      resetTemplateElements();
+      selectedObject = null;
+      lastActiveObject = null;
+      if (replaceImageGroup) replaceImageGroup.style.display = 'none';
+
+      fabric.loadSVGFromURL(url, (objects, options) => {
         const scale = Math.min(
           canvas.getWidth() / options.width,
           canvas.getHeight() / options.height
@@ -1276,77 +1378,10 @@
           canvas.renderAll();
         }
         renderLayers();
-      });
-
-      canvas.on('object:added', () => {
-        if (historyStep === history.length - 1) saveHistory();
-        renderLayers();
-      });
-
-      canvas.on('object:modified', () => {
+        history = [];
+        historyStep = 0;
         saveHistory();
-        renderLayers();
       });
-      canvas.on('object:moving', (event) => {
-        const target = event.target;
-        if (!target) return;
-
-        const SNAP_THRESHOLD = 6;
-        const canvasWidth = canvas.getWidth();
-        const canvasHeight = canvas.getHeight();
-        const bounds = target.getBoundingRect(true, true);
-
-        // Snap to canvas edges
-        if (Math.abs(bounds.left) < SNAP_THRESHOLD) {
-          target.left -= bounds.left;
-        }
-        if (Math.abs(bounds.top) < SNAP_THRESHOLD) {
-          target.top -= bounds.top;
-        }
-        const boundsRight = bounds.left + bounds.width;
-        const boundsBottom = bounds.top + bounds.height;
-        if (Math.abs(canvasWidth - boundsRight) < SNAP_THRESHOLD) {
-          target.left += canvasWidth - boundsRight;
-        }
-        if (Math.abs(canvasHeight - boundsBottom) < SNAP_THRESHOLD) {
-          target.top += canvasHeight - boundsBottom;
-        }
-
-        // Snap to canvas center
-        const center = canvas.getCenter();
-        const targetCenter = target.getCenterPoint();
-        if (Math.abs(targetCenter.x - center.left) < SNAP_THRESHOLD) {
-          target.setPositionByOrigin(new fabric.Point(center.left, targetCenter.y), 'center', 'center');
-        }
-        if (Math.abs(targetCenter.y - center.top) < SNAP_THRESHOLD) {
-          target.setPositionByOrigin(new fabric.Point(targetCenter.x, center.top), 'center', 'center');
-        }
-
-        target.setCoords();
-      });
-      canvas.on('selection:created', updatePropertyPanel);
-      canvas.on('selection:updated', updatePropertyPanel);
-      canvas.on('selection:cleared', () => {
-        const objects = canvas.getObjects();
-        if (lastActiveObject && objects.includes(lastActiveObject)) {
-          canvas.setActiveObject(lastActiveObject);
-          canvas.renderAll();
-          return;
-        }
-        renderLayers();
-        document.getElementById('carnet-panel').style.display = 'block';
-        selectedObject = null;
-        if (replaceImageGroup) replaceImageGroup.style.display = 'none';
-      });
-        renderLayers();
-
-      canvasWrapper.addEventListener('wheel', handleCanvasZoom, { passive: false });
-      if (canvas.upperCanvasEl) {
-      canvas.on('object:removed', () => renderLayers());
-        canvas.upperCanvasEl.addEventListener('wheel', handleCanvasZoom, { passive: false });
-      }
-
-      saveHistory();
     }
 
         renderLayers();
@@ -1689,6 +1724,16 @@
           return;
         }
         document.getElementById('user-modal').classList.add('active');
+      });
+    }
+
+    if (templateSelect) {
+      templateSelect.addEventListener('change', () => {
+        const key = templateSelect.value;
+        const nextUrl = svgTemplateMap[key] || svgTemplateUrl;
+        if (nextUrl === svgTemplateUrl) return;
+        svgTemplateUrl = nextUrl;
+        loadSvgTemplate(svgTemplateUrl);
       });
     }
 
