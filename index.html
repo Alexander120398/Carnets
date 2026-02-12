@@ -659,6 +659,13 @@
       .canvas-zoom-controls {
         display: none !important;
       }
+      .main-container,
+      .content,
+      .canvas-area {
+        display: block !important;
+        width: 100% !important;
+        height: 100% !important;
+      }
       .content {
         position: static;
       }
@@ -668,15 +675,25 @@
       #canvas-wrapper {
         padding: 0;
         background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 100% !important;
+        height: 100% !important;
       }
       #canvas {
-        width: 100%;
-        height: 100%;
+        width: auto !important;
+        height: auto !important;
+        max-width: 100% !important;
+        max-height: 100% !important;
         background: white;
       }
-      canvas {
+      canvas,
+      .upper-canvas,
+      .lower-canvas {
         box-shadow: none;
         border-radius: 0;
+        transform: none !important;
       }
     }
   </style>
@@ -783,6 +800,9 @@
         </div>
         <div class="property-group">
          <button id="assign-user-btn" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Asignar usuario</button>
+        </div>
+        <div class="property-group">
+         <button id="assign-user-back-btn" style="width: 100%; padding: 12px; background: #0ea5e9; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Asignar reverso</button>
         </div>
        <div class="property-group"><label class="property-label">Reemplazar Foto</label> <input type="file" class="property-input" id="card-photo" accept="image/*">
        </div>
@@ -971,10 +991,12 @@
       const newUserBtn = document.getElementById('new-user-btn');
       const createTemplateButton = document.getElementById('create-template-btn');
       const assignButton = document.getElementById('assign-user-btn');
+      const assignBackButton = document.getElementById('assign-user-back-btn');
       const rolesSection = document.getElementById('roles-section');
       if (newUserBtn) newUserBtn.disabled = !canManageUsers();
       if (createTemplateButton) createTemplateButton.disabled = !canManageTemplates();
       if (assignButton) assignButton.disabled = !isCloudEnabled();
+      if (assignBackButton) assignBackButton.disabled = !isCloudEnabled();
       if (rolesSection) rolesSection.style.display = hasRole('admin') ? 'block' : 'none';
     }
 
@@ -1314,40 +1336,28 @@
               });
             }
 
-            if (editable.text === 'Andreina Mejía') {
-              editable.dataField = 'name';
-              templateElements.name = editable;
-            }
-            if (editable.text === '352-6852') {
-              editable.dataField = 'code';
-              templateElements.code = editable;
-            }
-            if (editable.text === 'Auxiliar Contable') {
-              editable.dataField = 'position';
-              templateElements.position = editable;
-            }
+            editable.set({
+              selectable: true,
+              evented: true,
+              hasControls: true,
+              hasBorders: true,
+              lockMovementX: false,
+              lockMovementY: false
+            });
+            editable._isUserEditable = true;
 
-            if (editable.dataField) {
-              editable.set({
-                selectable: true,
-                evented: true,
-                hasControls: true,
-                hasBorders: true,
-                lockMovementX: false,
-                lockMovementY: false
-              });
-              editable._isUserEditable = true;
-            } else {
-              editable.set({
-                selectable: false,
-                evented: false,
-                hasControls: false,
-                hasBorders: false,
-                lockMovementX: true,
-                lockMovementY: true
-              });
-              editable._isUserEditable = false;
-            }
+              if (editable.text === 'Andreina Mejía') {
+                editable.dataField = 'name';
+                templateElements.name = editable;
+              }
+              if (editable.text === '352-6852') {
+                editable.dataField = 'code';
+                templateElements.code = editable;
+              }
+              if (editable.text === 'Auxiliar Contable') {
+                editable.dataField = 'position';
+                templateElements.position = editable;
+              }
 
             editable.setCoords();
             canvas.add(editable);
@@ -1382,7 +1392,6 @@
           canvas.add(obj);
         });
 
-        canvas.renderAll();
         if (templateElements.photo && templateElements.photoFrame) {
           fitPhotoToFrame(templateElements.photo, templateElements.photoFrame);
           canvas.renderAll();
@@ -1613,6 +1622,7 @@
     const photoRadiusValue = document.getElementById('photo-radius-value');
     const userSelect = document.getElementById('user-select');
     const assignUserBtn = document.getElementById('assign-user-btn');
+    const assignUserBackBtn = document.getElementById('assign-user-back-btn');
     const userSearchInput = document.getElementById('user-search');
     const roleEmailInput = document.getElementById('role-email');
     const rolePasswordInput = document.getElementById('role-password');
@@ -2197,7 +2207,8 @@
           <div class="user-role">${user.cargo}</div>
           ${allowManage ? `
           <div style="margin-top: 8px; display: flex; gap: 8px;">
-            <button style="padding: 6px 10px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px;" onclick="loadUserCard('${user.id}')">Editar carnet</button>
+            <button style="padding: 6px 10px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px;" onclick="loadUserCard('${user.id}', 'front')">Editar frontal</button>
+            <button style="padding: 6px 10px; background: #0ea5e9; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px;" onclick="loadUserCard('${user.id}', 'back')">Editar reverso</button>
             <button style="padding: 6px 10px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px;" onclick="deleteUser('${user.id}')">Eliminar</button>
           </div>
           ` : ''}
@@ -2228,6 +2239,10 @@
       if (Object.prototype.hasOwnProperty.call(mappedUpdates, 'carnetData')) {
         mappedUpdates.carnet_data = mappedUpdates.carnetData;
         delete mappedUpdates.carnetData;
+      }
+      if (Object.prototype.hasOwnProperty.call(mappedUpdates, 'carnetBackData')) {
+        mappedUpdates.carnet_back_data = mappedUpdates.carnetBackData;
+        delete mappedUpdates.carnetBackData;
       }
 
       if (isCloudEnabled()) {
@@ -2264,11 +2279,26 @@
       });
     }
 
-    window.loadUserCard = function(userId) {
+    if (assignUserBackBtn) {
+      assignUserBackBtn.addEventListener('click', async () => {
+        if (!userSelect || !userSelect.value) return;
+        if (!isCloudEnabled()) {
+          alert('Inicia sesion para asignar carnets en la nube.');
+          return;
+        }
+        const carnetBackData = JSON.stringify(canvas.toJSON());
+        await updateUserData(userSelect.value, { carnetBackData });
+        alert('Reverso asignado al usuario.');
+      });
+    }
+
+    window.loadUserCard = function(userId, side = 'front') {
       const user = users.find(u => u.id === userId);
-      const carnetData = user?.carnet_data || user?.carnetData;
-      if (!user || !carnetData) return;
-      canvas.loadFromJSON(JSON.parse(carnetData), () => {
+      const frontData = user?.carnet_data || user?.carnetData;
+      const backData = user?.carnet_back_data || user?.carnetBackData;
+      const payload = side === 'back' ? backData : frontData;
+      if (!user || !payload) return;
+      canvas.loadFromJSON(JSON.parse(payload), () => {
         canvas.renderAll();
         saveHistory();
         currentModule = 'carnet';
