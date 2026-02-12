@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+npm-debug.log*
+
+# OS Files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Generated files
+*.log
+
+# User uploads (si decides guardar archivos subidos)
+uploads/
+temp/

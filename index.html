@@ -1,0 +1,2098 @@
+<!doctype html>
+<html lang="es" class="h-full">
+ <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CarneTs Grupo Read</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+  <script src="/_sdk/element_sdk.js"></script>
+  <script src="/_sdk/data_sdk.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: 'Inter', sans-serif;
+      background: #f8fafc;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* Header */
+    .header {
+      height: 64px;
+      background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-weight: 700;
+      font-size: 18px;
+      color: white;
+    }
+
+    .logo img {
+      width: 28px;
+      height: 28px;
+      object-fit: contain;
+    }
+
+    .logo-text {
+      display: inline-block;
+      animation: logoTextReveal 10s infinite;
+      transform-origin: left center;
+    }
+
+    @keyframes logoTextReveal {
+      0%, 20% {
+        opacity: 0;
+        transform: translateX(-8px);
+      }
+      30%, 60% {
+        opacity: 1;
+        transform: translateX(0);
+      }
+      70%, 100% {
+        opacity: 0;
+        transform: translateX(-8px);
+      }
+    }
+
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    /* Main Layout */
+    .main-container {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    /* Sidebar */
+    .sidebar {
+      width: 280px;
+      background: white;
+      border-right: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .sidebar-menu {
+      flex: 1;
+      padding: 24px 0;
+    }
+
+    .menu-item {
+      padding: 14px 24px;
+      color: #475569;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 14px;
+      font-weight: 500;
+      transition: all 0.2s;
+      border-left: 3px solid transparent;
+      position: relative;
+    }
+
+    .menu-item svg {
+      width: 20px;
+      height: 20px;
+      stroke: currentColor;
+      fill: none;
+    }
+
+    .menu-item:hover {
+      background: #f1f5f9;
+      color: #1e293b;
+    }
+
+    .menu-item.active {
+      background: #eff6ff;
+      border-left-color: #3b82f6;
+      color: #1e40af;
+    }
+
+    /* Content Area */
+    .content {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* Canvas Area */
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      background: #f8fafc;
+    }
+
+    .canvas-toolbar {
+      height: 56px;
+      background: white;
+      border-bottom: 1px solid #e2e8f0;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      gap: 16px;
+    }
+
+    .toolbar-btn {
+      width: 36px;
+      height: 36px;
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      color: #475569;
+    }
+
+    .toolbar-btn:hover {
+      background: #f1f5f9;
+      border-color: #cbd5e1;
+      color: #1e293b;
+    }
+
+    .toolbar-btn.active {
+      background: #3b82f6;
+      border-color: #3b82f6;
+      color: white;
+    }
+
+    .toolbar-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+
+    .toolbar-divider {
+      width: 1px;
+      height: 24px;
+      background: #e2e8f0;
+    }
+
+    #canvas-wrapper {
+      flex: 1;
+      background: #eef2f7;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: auto;
+      padding: 32px;
+    }
+
+    canvas {
+      box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+      border-radius: 8px;
+      transform-origin: center center;
+    }
+
+    .canvas-zoom-controls {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid #e2e8f0;
+      border-radius: 8px;
+      padding: 6px 8px;
+      z-index: 5;
+    }
+
+    #canvas-wrapper {
+      position: relative;
+    }
+
+    .zoom-select {
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      padding: 4px 8px;
+      background: white;
+      color: #475569;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .dark .canvas-zoom-controls {
+      background: rgba(15, 23, 42, 0.9);
+      border-color: #1f2937;
+    }
+
+    .dark .zoom-select {
+      background: #0f172a;
+      border-color: #1f2937;
+      color: #e2e8f0;
+    }
+
+    /* Right Panel */
+    .right-panel {
+      width: 340px;
+      background: white;
+      border-left: 1px solid #e2e8f0;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .right-panel.compact {
+      width: 280px;
+    }
+
+    .panel-header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #e2e8f0;
+      font-weight: 600;
+      font-size: 14px;
+      color: #1e293b;
+    }
+
+    .panel-content {
+      flex: 1;
+      padding: 20px 24px;
+      overflow-y: auto;
+    }
+
+    .panel-content.plantillas-compact {
+      flex: 0 0 auto;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+
+    .property-section {
+      margin-bottom: 24px;
+    }
+
+    .property-section-title {
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      color: #94a3b8;
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .property-group {
+      margin-bottom: 16px;
+    }
+
+    .property-label {
+      font-size: 13px;
+      font-weight: 500;
+      color: #475569;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .property-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 13px;
+      color: #1e293b;
+      transition: all 0.2s;
+    }
+
+    .property-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .property-input[type="color"] {
+      cursor: pointer;
+      height: 36px;
+      padding: 4px;
+    }
+
+    .property-input[type="range"] {
+      width: 100%;
+    }
+
+    .slider-container {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .slider-container input[type="range"] {
+      flex: 1;
+    }
+
+    .slider-value {
+      min-width: 40px;
+      text-align: right;
+      font-size: 13px;
+      font-weight: 600;
+      color: #3b82f6;
+    }
+
+    .layers-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .layer-item {
+      width: 100%;
+      text-align: left;
+      padding: 10px 12px;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      background: #ffffff;
+      color: #1e293b;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .layer-item:hover {
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .layer-item.active {
+      background: #eff6ff;
+      border-color: #3b82f6;
+      color: #1e40af;
+    }
+
+    .layer-actions {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .layer-lock-btn {
+      border: none;
+      background: transparent;
+      cursor: pointer;
+      font-size: 14px;
+      color: inherit;
+      padding: 2px 4px;
+      border-radius: 4px;
+    }
+
+    .layer-lock-btn:hover {
+      background: rgba(59, 130, 246, 0.1);
+    }
+
+    /* Modals */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 2000;
+    }
+
+    .modal-overlay.active {
+      display: flex;
+    }
+
+    .modal {
+      background: white;
+      border-radius: 12px;
+      padding: 32px;
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 25px 50px rgba(0,0,0,0.15);
+    }
+
+    .modal-title {
+      font-size: 20px;
+      font-weight: 700;
+      margin-bottom: 24px;
+      color: #1e293b;
+    }
+
+    .modal-input {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      font-size: 14px;
+      color: #1e293b;
+      margin-bottom: 16px;
+      transition: all 0.2s;
+    }
+
+    .modal-input:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    .modal-buttons {
+      display: flex;
+      gap: 12px;
+    }
+
+    .modal-btn {
+      flex: 1;
+      padding: 12px;
+      border: none;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .modal-btn-primary {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .modal-btn-primary:hover {
+      background: #2563eb;
+    }
+
+    .modal-btn-secondary {
+      background: #f1f5f9;
+      color: #475569;
+    }
+
+    .modal-btn-secondary:hover {
+      background: #e2e8f0;
+    }
+
+    /* Shapes Grid */
+    .shapes-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .shape-item {
+      aspect-ratio: 1;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .shape-item:hover {
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+
+    .shape-item svg {
+      width: 20px;
+      height: 20px;
+      stroke: #475569;
+    }
+
+    .shape-item:hover svg {
+      stroke: #3b82f6;
+    }
+
+    /* Categories */
+    .category-header {
+      padding: 10px 0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 600;
+      font-size: 13px;
+      color: #1e293b;
+      margin-bottom: 8px;
+    }
+
+    .category-header svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.2s;
+    }
+
+    .category-header.active svg {
+      transform: rotate(180deg);
+    }
+
+    /* Users List */
+    .users-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .user-item {
+      padding: 12px;
+      background: #f8fafc;
+      border: 1px solid #e2e8f0;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .user-item:hover {
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+
+    .user-name {
+      font-weight: 600;
+      font-size: 13px;
+      color: #1e293b;
+    }
+
+    .user-role {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb {
+      background: #cbd5e1;
+      border-radius: 3px;
+    }
+
+    .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+      background: #94a3b8;
+    }
+
+    .sidebar, .right-panel {
+      scrollbar-width: thin;
+    }
+
+    @media print {
+      @page {
+        margin: 0;
+      }
+      body, html {
+        background: white;
+        margin: 0;
+        padding: 0;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+      }
+      .header, .sidebar, .canvas-toolbar, .right-panel {
+        display: none !important;
+      }
+      .canvas-zoom-controls {
+        display: none !important;
+      }
+      .content {
+        position: static;
+      }
+      .canvas-area {
+        height: 100%;
+      }
+      #canvas-wrapper {
+        padding: 0;
+        background: white;
+      }
+      #canvas {
+        width: 100%;
+        height: 100%;
+        background: white;
+      }
+      canvas {
+        box-shadow: none;
+        border-radius: 0;
+      }
+    }
+  </style>
+  <style>@view-transition { navigation: auto; }</style>
+  <script src="https://cdn.tailwindcss.com/3.4.17" type="text/javascript"></script>
+ </head>
+ <body><!-- Header -->
+  <header class="header">
+   <div class="logo">
+    <img src="docs/fcbba5_02a8a33f7c8c488b85759f33ee9af356~mv2.gif" alt="Logo">
+    <span class="logo-text">Carnets Grupo Read</span>
+     </div>
+    <div class="header-actions"></div>
+  </header><!-- Main Container -->
+  <div class="main-container"><!-- Sidebar Menu -->
+   <aside class="sidebar scrollbar-thin">
+    <div class="sidebar-menu">
+     <div class="menu-item active" data-module="carnet">
+      <svg fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+      </svg><span>Carnet</span>
+     </div>
+     <div class="menu-item" data-module="usuarios">
+      <svg fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 8.048M12 4.354c1.657 0 3.205.334 4.608.95m-9.216 0c1.403-.616 2.95-.95 4.608-.95m-9.216 0a10 10 0 0120 0M3 11.75a6.965 6.965 0 004.462 6.494m15.076-6.494a6.965 6.965 0 01-4.462 6.494M3 11.75c0 2.21.894 4.313 2.348 5.812m13.304-5.812a6.937 6.937 0 002.348-5.812" />
+      </svg><span>Usuarios</span>
+     </div>
+    <div class="menu-item" data-module="plantillas">
+     <svg fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7h16M4 12h16M4 17h10" />
+     </svg><span>Plantillas</span>
+    </div>
+     <div class="menu-item" data-module="opciones">
+      <svg fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" /> <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+      </svg><span>Opciones</span>
+     </div>
+    </div>
+   </aside><!-- Content Area -->
+   <div class="content"><!-- Canvas Area -->
+    <div class="canvas-area">
+     <div class="canvas-toolbar"><button class="toolbar-btn active" id="undo-btn" title="Deshacer">
+       <svg fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h10a8 8 0 018 8v3m-9-17v2.5A2.5 2.5 0 0113 2.5" />
+       </svg></button> <button class="toolbar-btn" id="redo-btn" title="Rehacer">
+       <svg fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 10h-10a8 8 0 00-8 8v3m9-17v2.5A2.5 2.5 0 0111 2.5" />
+       </svg></button>
+      <div class="toolbar-divider"></div><button class="toolbar-btn" id="delete-btn" title="Eliminar">
+       <svg fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3m-1 0h10" />
+       </svg></button>
+      <div class="toolbar-divider"></div><button class="toolbar-btn" id="print-btn" title="Imprimir">
+       <svg fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+       </svg></button> <button class="toolbar-btn" id="save-btn" title="Guardar">
+       <svg fill="none" stroke="currentColor" viewbox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7H5a2 2 0 00-2 2v9a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-3m-1 4l-3 3m0 0l-3-3m3 3V4" />
+       </svg></button>
+     </div>
+    <div id="canvas-wrapper">
+    <div class="canvas-zoom-controls">
+     <button class="toolbar-btn" id="zoom-out" title="Alejar">−</button>
+     <select id="zoom-select" class="zoom-select" aria-label="Zoom">
+      <option value="50">50%</option>
+      <option value="75">75%</option>
+      <option value="100" selected>100%</option>
+      <option value="125">125%</option>
+      <option value="150">150%</option>
+      <option value="200">200%</option>
+      <option value="300">300%</option>
+     </select>
+     <button class="toolbar-btn" id="zoom-in" title="Acercar">+</button>
+    </div>
+     <canvas id="canvas"></canvas>
+    </div>
+    </div><!-- Right Panel -->
+    <div class="right-panel scrollbar-thin" id="right-panel"><!-- Carnet Panel -->
+     <div id="carnet-panel" class="panel-content">
+      <div class="panel-header">
+       Propiedades del Carnet
+      </div>
+      <div class="property-section"><span class="property-section-title">Dimensiones</span>
+      <div class="property-group"><label class="property-label">Ancho (cm)</label> <input type="number" class="property-input" id="carnet-width" value="5.4" step="0.1">
+       </div>
+      <div class="property-group"><label class="property-label">Alto (cm)</label> <input type="number" class="property-input" id="carnet-height" value="8.56" step="0.1">
+       </div>
+      </div>
+      <div class="property-section"><span class="property-section-title">Fondo</span>
+       <div class="property-group"><label class="property-label">Color de Fondo</label> <input type="color" class="property-input" id="bg-color" value="#ffffff">
+       </div>
+      </div>
+      <div class="property-section"><span class="property-section-title">Datos del Carnet</span>
+       <div class="property-group"><label class="property-label">Nombre</label> <input type="text" class="property-input" id="card-name" placeholder="Nombre completo">
+       </div>
+       <div class="property-group"><label class="property-label">Código</label> <input type="text" class="property-input" id="card-code" placeholder="Código">
+       </div>
+       <div class="property-group"><label class="property-label">Puesto</label> <input type="text" class="property-input" id="card-position" placeholder="Puesto">
+       </div>
+        <div class="property-group"><label class="property-label">Asignar a usuario</label>
+         <select class="property-input" id="user-select">
+          <option value="">Selecciona un usuario</option>
+         </select>
+        </div>
+        <div class="property-group">
+         <button id="assign-user-btn" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Asignar usuario</button>
+        </div>
+       <div class="property-group"><label class="property-label">Reemplazar Foto</label> <input type="file" class="property-input" id="card-photo" accept="image/*">
+       </div>
+       <div class="property-group"><label class="property-label">Agregar/Reemplazar Logo</label> <input type="file" class="property-input" id="card-logo" accept="image/*">
+       </div>
+      </div>
+      <div class="property-section"><span class="property-section-title">Elemento Seleccionado</span>
+       <div class="property-group"><label class="property-label">Color</label> <input type="color" class="property-input" id="fill-color" value="#3b82f6">
+       </div>
+       <div class="property-group"><label class="property-label">Color Borde</label> <input type="color" class="property-input" id="stroke-color" value="#000000">
+       </div>
+        <div class="property-group"><label class="property-label">Tamaño de texto</label>
+         <div class="slider-container"><input type="range" id="font-size" min="8" max="72" value="16" class="property-input"> <span class="slider-value" id="font-size-value">16</span>
+         </div>
+        </div>
+       <div class="property-group"><label class="property-label">Grosor Borde</label>
+        <div class="slider-container"><input type="range" id="stroke-width" min="0" max="20" value="0" class="property-input"> <span class="slider-value" id="stroke-width-value">0</span>
+        </div>
+       </div>
+       <div class="property-group"><label class="property-label">Opacidad</label>
+        <div class="slider-container"><input type="range" id="opacity" min="0" max="100" value="100" class="property-input"> <span class="slider-value" id="opacity-value">100%</span>
+        </div>
+       </div>
+      <div class="property-group" id="photo-rounding-group" style="display: none;"><label class="property-label">Redondear bordes (Foto)</label>
+       <div class="slider-container"><input type="range" id="photo-radius" min="0" max="80" value="0" class="property-input"> <span class="slider-value" id="photo-radius-value">0</span>
+       </div>
+      </div>
+      <div class="property-group" id="replace-image-group" style="display: none;">
+       <button id="replace-image-btn" style="width: 100%; padding: 12px; background: #0ea5e9; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Reemplazar imagen</button>
+       <input type="file" id="replace-image-input" accept="image/*" style="display: none;">
+      </div>
+      <div class="property-group">
+       <button id="delete-selected" style="width: 100%; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Eliminar seleccionado</button>
+      </div>
+      </div>
+      <div class="property-section"><span class="property-section-title">Capas</span>
+       <div id="layers-list" class="layers-list"></div>
+      </div>
+         </div><!-- Usuarios Panel -->
+     <div id="usuarios-panel" class="panel-content" style="display: none;">
+      <div class="panel-header">
+       Usuarios Guardados
+      </div>
+      <div class="property-group" style="margin-top: 16px;">
+       <input type="text" class="property-input" id="user-search" placeholder="Buscar usuario...">
+      </div>
+      <div class="property-group" style="margin-top: 16px;"><button id="new-user-btn" style="width: 100%; padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; transition: all 0.2s;" onclick="document.getElementById('user-modal').classList.add('active')">+ Nuevo Usuario</button>
+      </div>
+      <div class="users-list" id="users-list" style="margin-top: 16px;"></div>
+    </div><!-- Opciones Panel -->
+     <div id="opciones-panel" class="panel-content" style="display: none;">
+      <div class="panel-header">
+       Configuración
+      </div>
+      <div class="property-section" style="margin-top: 16px;"><span class="property-section-title">Empresa</span>
+       <div class="property-group"><label class="property-label">Nombre de Empresa</label> <input type="text" class="property-input" id="company-name" placeholder="Mi Empresa">
+       </div>
+       <div class="property-group"><label class="property-label">Logo URL</label> <input type="text" class="property-input" id="company-logo" placeholder="https://...">
+       </div>
+      </div>
+      <div class="property-section"><span class="property-section-title">Acciones</span> <button id="export-btn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-bottom: 12px;">Exportar Carnet</button> <button id="clear-canvas-btn" style="width: 100%; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Limpiar Canvas</button>
+      </div>
+     </div>
+      </div><!-- Plantillas Panel -->
+      <div id="plantillas-panel" class="panel-content plantillas-compact" style="display: none;">
+        <div class="panel-header">
+         Gestor de Plantillas
+        </div>
+        <div class="property-group" style="margin-top: 16px;">
+         <button id="create-template-btn" style="width: 100%; padding: 12px; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Crear plantilla</button>
+        </div>
+        <div class="property-section" style="margin-top: 16px;">
+         <div id="templates-list"></div>
+        </div>
+       </div>
+   </div>
+  </div><!-- Modals -->
+  <div class="modal-overlay" id="user-modal">
+   <div class="modal">
+    <div class="modal-title">
+     Nuevo Usuario
+    </div><input type="text" class="modal-input" id="user-nombre" placeholder="Nombre completo"> <input type="text" class="modal-input" id="user-cargo" placeholder="Cargo"> <input type="text" class="modal-input" id="user-departamento" placeholder="Departamento"> <input type="tel" class="modal-input" id="user-telefono" placeholder="Teléfono"> <input type="email" class="modal-input" id="user-email" placeholder="Email">
+    <div class="modal-buttons"><button class="modal-btn modal-btn-secondary" onclick="document.getElementById('user-modal').classList.remove('active')">Cancelar</button> <button class="modal-btn modal-btn-primary" id="save-user-btn">Guardar Usuario</button>
+    </div>
+   </div>
+  </div>
+  <div class="modal-overlay" id="template-modal">
+   <div class="modal">
+    <div class="modal-title">
+     Guardar Plantilla
+    </div><input type="text" class="modal-input" id="template-name" placeholder="Nombre de la plantilla">
+    <input type="file" class="modal-input" id="template-logo" accept="image/*">
+    <img id="template-logo-preview" alt="Logo" style="display: none; width: 100%; max-height: 140px; object-fit: contain; margin-bottom: 16px; border: 1px solid #e2e8f0; border-radius: 6px;">
+    <div class="modal-buttons"><button class="modal-btn modal-btn-secondary" onclick="document.getElementById('template-modal').classList.remove('active')">Cancelar</button> <button class="modal-btn modal-btn-primary" id="confirm-template-btn">Guardar</button>
+    </div>
+   </div>
+  </div>
+  <script>
+    let canvas = null;
+    let history = [];
+    let historyStep = 0;
+    let selectedObject = null;
+    let lastActiveObject = null;
+    const localUsersKey = 'local_users';
+    let users = JSON.parse(localStorage.getItem(localUsersKey)) || [];
+    let templates = JSON.parse(localStorage.getItem('templates')) || [];
+    let editingTemplateId = null;
+    let templateLogoData = null;
+    let currentModule = 'carnet';
+    let templateElements = {
+      name: null,
+      code: null,
+      position: null,
+      photo: null,
+      logo: null,
+      photoFrame: null
+    };
+
+    const svgTemplateUrl = 'docs/Carnet%20Corporativo_nuevo%20diseño_Tiro.svg';
+
+    function normalizePhotoFrame(photoObj) {
+      if (!photoObj || photoObj.type !== 'image' || !photoObj.clipPath) return;
+      const clip = photoObj.clipPath;
+      if (clip.type !== 'rect') return;
+      const clipWidth = (clip.width || photoObj.width) * (clip.scaleX || 1);
+      const clipHeight = (clip.height || photoObj.height) * (clip.scaleY || 1);
+      const sourceWidth = photoObj.width || clipWidth;
+      const sourceHeight = photoObj.height || clipHeight;
+      const cropX = Math.max(0, (sourceWidth - clipWidth) / 2);
+      const cropY = Math.max(0, (sourceHeight - clipHeight) / 2);
+
+      photoObj.set({
+        width: clipWidth,
+        height: clipHeight,
+        cropX,
+        cropY
+      });
+
+      if (!(clip.rx > 0 || clip.ry > 0)) {
+        photoObj.clipPath = null;
+      }
+    }
+
+    function getFrameMetrics(frame) {
+      if (!frame) return null;
+      const bounds = frame.getBoundingRect(true, true);
+      const width = bounds.width;
+      const height = bounds.height;
+      const center = new fabric.Point(bounds.left + bounds.width / 2, bounds.top + bounds.height / 2);
+      const radiusBase = frame.rx || frame.ry || 0;
+      const radius = radiusBase * (frame.scaleX || 1);
+      return { width, height, center, radius, angle: frame.angle || 0 };
+    }
+
+    function fitPhotoToFrame(photo, frame) {
+      if (!photo || !frame) return;
+      const metrics = getFrameMetrics(frame);
+      if (!metrics) return;
+      const coverScale = Math.max(metrics.width / photo.width, metrics.height / photo.height);
+      const cropWidth = metrics.width / coverScale;
+      const cropHeight = metrics.height / coverScale;
+      const cropX = Math.max(0, (photo.width - cropWidth) / 2);
+      const cropY = Math.max(0, (photo.height - cropHeight) / 2);
+
+      photo.set({
+        left: metrics.center.x,
+        top: metrics.center.y,
+        originX: 'center',
+        originY: 'center',
+        scaleX: coverScale,
+        scaleY: coverScale,
+        width: cropWidth,
+        height: cropHeight,
+        cropX,
+        cropY,
+        padding: 0
+      });
+
+      if (metrics.radius > 0) {
+        photo.clipPath = new fabric.Rect({
+          width: metrics.width,
+          height: metrics.height,
+          rx: metrics.radius,
+          ry: metrics.radius,
+          originX: 'center',
+          originY: 'center',
+          left: metrics.center.x,
+          top: metrics.center.y,
+          angle: metrics.angle,
+          absolutePositioned: true
+        });
+      } else {
+        photo.clipPath = null;
+      }
+
+      photo.setCoords();
+    }
+
+    // Fabric.js initialization
+    function initCanvas() {
+      canvas = new fabric.Canvas('canvas', {
+        width: 638,
+        height: 1011,
+        backgroundColor: '#ffffff'
+      });
+
+      fabric.Object.prototype.transparentCorners = false;
+      fabric.Object.prototype.cornerStyle = 'circle';
+      fabric.Object.prototype.cornerColor = '#2563eb';
+      fabric.Object.prototype.cornerStrokeColor = '#ffffff';
+      fabric.Object.prototype.cornerSize = 10;
+      fabric.Object.prototype.borderColor = '#2563eb';
+      canvas.preserveObjectStacking = true;
+      canvas.uniformScaling = false;
+      canvas.perPixelTargetFind = true;
+      canvas.targetFindTolerance = 8;
+      canvas.selection = false;
+      fabric.Object.prototype.objectCaching = false;
+
+      canvasElement = canvas.lowerCanvasEl;
+
+      fabric.loadSVGFromURL(svgTemplateUrl, (objects, options) => {
+        const scale = Math.min(
+          canvas.getWidth() / options.width,
+          canvas.getHeight() / options.height
+        );
+        const offsetX = (canvas.getWidth() - options.width * scale) / 2;
+        const offsetY = (canvas.getHeight() - options.height * scale) / 2;
+
+        objects.forEach(obj => {
+          obj.scaleX *= scale;
+          obj.scaleY *= scale;
+          obj.left = (obj.left || 0) * scale + offsetX;
+          obj.top = (obj.top || 0) * scale + offsetY;
+          obj.set({ selectable: false, evented: false, hasControls: false, hasBorders: false });
+          if (typeof obj.setControlsVisibility === 'function') {
+            obj.setControlsVisibility({
+              tl: true, tr: true, bl: true, br: true,
+              ml: true, mr: true, mt: true, mb: true,
+              mtr: true
+            });
+          }
+
+          if (obj.type === 'text') {
+            const editable = new fabric.IText(obj.text || '', {
+              left: obj.left,
+              top: obj.top,
+              angle: obj.angle || 0,
+              fontSize: obj.fontSize,
+              fontFamily: obj.fontFamily,
+              fontWeight: obj.fontWeight,
+              fill: obj.fill,
+              textAlign: obj.textAlign,
+              originX: obj.originX,
+              originY: obj.originY,
+              scaleX: obj.scaleX,
+              scaleY: obj.scaleY,
+              opacity: obj.opacity,
+              hasControls: true,
+              hasBorders: true,
+              perPixelTargetFind: false,
+              padding: 8
+            });
+            if (typeof editable.setControlsVisibility === 'function') {
+              editable.setControlsVisibility({
+                tl: true, tr: true, bl: true, br: true,
+                ml: true, mr: true, mt: true, mb: true,
+                mtr: true
+              });
+            }
+
+            if (editable.text === 'Andreina Mejía') {
+              editable.dataField = 'name';
+              templateElements.name = editable;
+            }
+            if (editable.text === '352-6852') {
+              editable.dataField = 'code';
+              templateElements.code = editable;
+            }
+            if (editable.text === 'Auxiliar Contable') {
+              editable.dataField = 'position';
+              templateElements.position = editable;
+            }
+
+            if (editable.dataField) {
+              editable.set({
+                selectable: true,
+                evented: true,
+                hasControls: true,
+                hasBorders: true,
+                lockMovementX: false,
+                lockMovementY: false
+              });
+              editable._isUserEditable = true;
+            }
+
+            editable.setCoords();
+            canvas.add(editable);
+            return;
+          }
+
+          if (obj.type === 'image' && !templateElements.photo) {
+            templateElements.photo = obj;
+            normalizePhotoFrame(obj);
+            obj.set({
+              selectable: true,
+              evented: true,
+              hasControls: true,
+              hasBorders: true,
+              lockMovementX: false,
+              lockMovementY: false,
+              padding: 0
+            });
+            obj._isUserEditable = true;
+          }
+
+          if (obj.type === 'rect' && !templateElements.photoFrame) {
+            const stroke = (obj.stroke || '').toLowerCase();
+            const fill = (obj.fill || '').toLowerCase();
+            if ((stroke === '#004c91' || fill === '#014c91') && (obj.rx || obj.ry)) {
+              templateElements.photoFrame = obj;
+              obj.set({ selectable: false, evented: false, hasControls: false, hasBorders: false });
+            }
+          }
+
+          obj.setCoords();
+          canvas.add(obj);
+        });
+
+        canvas.renderAll();
+        if (templateElements.photo && templateElements.photoFrame) {
+          fitPhotoToFrame(templateElements.photo, templateElements.photoFrame);
+          canvas.renderAll();
+        }
+        renderLayers();
+      });
+
+      canvas.on('object:added', () => {
+        if (historyStep === history.length - 1) saveHistory();
+        renderLayers();
+      });
+
+      canvas.on('object:modified', () => {
+        saveHistory();
+        renderLayers();
+      });
+      canvas.on('object:moving', (event) => {
+        const target = event.target;
+        if (!target) return;
+
+        const SNAP_THRESHOLD = 6;
+        const canvasWidth = canvas.getWidth();
+        const canvasHeight = canvas.getHeight();
+        const bounds = target.getBoundingRect(true, true);
+
+        // Snap to canvas edges
+        if (Math.abs(bounds.left) < SNAP_THRESHOLD) {
+          target.left -= bounds.left;
+        }
+        if (Math.abs(bounds.top) < SNAP_THRESHOLD) {
+          target.top -= bounds.top;
+        }
+        const boundsRight = bounds.left + bounds.width;
+        const boundsBottom = bounds.top + bounds.height;
+        if (Math.abs(canvasWidth - boundsRight) < SNAP_THRESHOLD) {
+          target.left += canvasWidth - boundsRight;
+        }
+        if (Math.abs(canvasHeight - boundsBottom) < SNAP_THRESHOLD) {
+          target.top += canvasHeight - boundsBottom;
+        }
+
+        // Snap to canvas center
+        const center = canvas.getCenter();
+        const targetCenter = target.getCenterPoint();
+        if (Math.abs(targetCenter.x - center.left) < SNAP_THRESHOLD) {
+          target.setPositionByOrigin(new fabric.Point(center.left, targetCenter.y), 'center', 'center');
+        }
+        if (Math.abs(targetCenter.y - center.top) < SNAP_THRESHOLD) {
+          target.setPositionByOrigin(new fabric.Point(targetCenter.x, center.top), 'center', 'center');
+        }
+
+        target.setCoords();
+      });
+      canvas.on('selection:created', updatePropertyPanel);
+      canvas.on('selection:updated', updatePropertyPanel);
+      canvas.on('selection:cleared', () => {
+        const objects = canvas.getObjects();
+        if (lastActiveObject && objects.includes(lastActiveObject)) {
+          canvas.setActiveObject(lastActiveObject);
+          canvas.renderAll();
+          return;
+        }
+        renderLayers();
+        document.getElementById('carnet-panel').style.display = 'block';
+        selectedObject = null;
+        if (replaceImageGroup) replaceImageGroup.style.display = 'none';
+      });
+        renderLayers();
+
+      canvasWrapper.addEventListener('wheel', handleCanvasZoom, { passive: false });
+      if (canvas.upperCanvasEl) {
+      canvas.on('object:removed', () => renderLayers());
+        canvas.upperCanvasEl.addEventListener('wheel', handleCanvasZoom, { passive: false });
+      }
+
+      saveHistory();
+    }
+
+        renderLayers();
+    // Menu
+    document.querySelectorAll('.menu-item').forEach(item => {
+      item.addEventListener('click', () => {
+        document.querySelectorAll('.menu-item').forEach(i => i.classList.remove('active'));
+        item.classList.add('active');
+        
+        currentModule = item.dataset.module;
+        switchPanel(currentModule);
+      });
+    });
+
+    function switchPanel(module) {
+      document.querySelectorAll('.panel-content').forEach(p => p.style.display = 'none');
+      const panelId = module + '-panel';
+      const panel = document.getElementById(panelId);
+      if (panel) panel.style.display = 'block';
+      const rightPanel = document.getElementById('right-panel');
+
+      if (module === 'usuarios') {
+        renderUsers();
+      } else if (module === 'plantillas') {
+        const carnetPanel = document.getElementById('carnet-panel');
+        if (carnetPanel) carnetPanel.style.display = 'block';
+        renderTemplates();
+        renderLayers();
+      }
+
+      if (rightPanel) {
+        rightPanel.classList.toggle('compact', module === 'plantillas');
+      }
+    }
+
+    // Property Panel
+    function updatePropertyPanel() {
+      const selected = canvas.getActiveObject();
+      if (!selected) {
+        selectedObject = null;
+        if (replaceImageGroup) replaceImageGroup.style.display = 'none';
+        renderLayers();
+        return;
+      }
+
+      selectedObject = selected;
+      lastActiveObject = selected;
+      document.getElementById('carnet-panel').style.display = 'block';
+
+      if (selected.type === 'image') {
+        templateElements.photo = selected;
+      }
+
+      if (selected.type === 'i-text' && selected.dataField) {
+        if (selected.dataField === 'name') {
+          templateElements.name = selected;
+          cardNameInput.value = selected.text || '';
+        }
+        if (selected.dataField === 'code') {
+          templateElements.code = selected;
+          cardCodeInput.value = selected.text || '';
+        }
+        if (selected.dataField === 'position') {
+          templateElements.position = selected;
+          cardPositionInput.value = selected.text || '';
+        }
+      }
+
+      if (selected.type === 'i-text') {
+        document.getElementById('font-size').value = selected.fontSize || 16;
+        document.getElementById('font-size-value').textContent = selected.fontSize || 16;
+      }
+
+      if (replaceImageGroup) {
+        replaceImageGroup.style.display = selected.type === 'image' ? 'block' : 'none';
+      }
+
+      if (photoRoundingGroup) {
+        const isPhoto = selected === templateElements.photo;
+        photoRoundingGroup.style.display = isPhoto ? 'block' : 'none';
+        if (isPhoto && photoRadiusInput && photoRadiusValue) {
+          const currentRadius = typeof selected._photoRadius === 'number'
+            ? selected._photoRadius
+            : (selected.clipPath && typeof selected.clipPath.rx === 'number' ? selected.clipPath.rx : 0);
+          photoRadiusInput.value = Math.round(currentRadius || 0);
+          photoRadiusValue.textContent = Math.round(currentRadius || 0);
+        }
+      }
+
+      document.getElementById('fill-color').value = selected.fill || '#3b82f6';
+      document.getElementById('stroke-color').value = selected.stroke || '#000000';
+      document.getElementById('stroke-width').value = selected.strokeWidth || 0;
+      document.getElementById('stroke-width-value').textContent = selected.strokeWidth || 0;
+      document.getElementById('opacity').value = (selected.opacity || 1) * 100;
+      document.getElementById('opacity-value').textContent = Math.round((selected.opacity || 1) * 100) + '%';
+      renderLayers();
+    }
+
+    function getLayerLabel(obj) {
+      if (!obj) return 'Capa';
+      if (obj.dataField === 'name') return 'Nombre';
+      if (obj.dataField === 'code') return 'Código';
+      if (obj.dataField === 'position') return 'Puesto';
+      if (obj === templateElements.photo) return 'Foto';
+      if (obj === templateElements.logo) return 'Logo';
+      if (obj.type === 'image') return 'Imagen';
+      if (obj.type === 'i-text' || obj.type === 'textbox' || obj.type === 'text') {
+        const textPreview = (obj.text || '').trim();
+        return textPreview ? `Texto: ${textPreview.slice(0, 12)}` : 'Texto';
+      }
+      return obj.type ? obj.type.charAt(0).toUpperCase() + obj.type.slice(1) : 'Capa';
+    }
+
+    function renderLayers() {
+      const list = document.getElementById('layers-list');
+      if (!list || !canvas) return;
+      const active = canvas.getActiveObject();
+      list.innerHTML = '';
+
+      const objects = canvas.getObjects().filter(obj =>
+        obj === templateElements.photo ||
+        obj.dataField === 'name' ||
+        obj.dataField === 'code' ||
+        obj.dataField === 'position'
+      ).slice().reverse();
+      objects.forEach((obj, index) => {
+        const item = document.createElement('button');
+        item.type = 'button';
+        item.className = 'layer-item' + (active === obj ? ' active' : '');
+        const label = document.createElement('span');
+        label.textContent = `${objects.length - index}. ${getLayerLabel(obj)}`;
+
+        const actions = document.createElement('span');
+        actions.className = 'layer-actions';
+
+        const lockBtn = document.createElement('button');
+        lockBtn.type = 'button';
+        lockBtn.className = 'layer-lock-btn';
+        const isLocked = obj.selectable === false;
+        lockBtn.textContent = isLocked ? '🔒' : '🔓';
+        lockBtn.title = isLocked ? 'Desbloquear' : 'Bloquear';
+        lockBtn.addEventListener('click', (event) => {
+          event.stopPropagation();
+          const newLockedState = obj.selectable !== false;
+          obj.set({
+            selectable: !newLockedState,
+            evented: !newLockedState,
+            hasControls: !newLockedState,
+            hasBorders: !newLockedState,
+            lockMovementX: newLockedState,
+            lockMovementY: newLockedState
+          });
+          if (!newLockedState) {
+            obj._isUserEditable = true;
+          }
+          if (canvas.getActiveObject() === obj && newLockedState) {
+            canvas.discardActiveObject();
+          }
+          canvas.renderAll();
+          renderLayers();
+        });
+
+        actions.appendChild(lockBtn);
+
+        item.appendChild(label);
+        item.appendChild(actions);
+        item.addEventListener('click', () => {
+          if (obj.selectable === false) return;
+          canvas.setActiveObject(obj);
+          canvas.renderAll();
+          updatePropertyPanel();
+        });
+        list.appendChild(item);
+      });
+    }
+
+    // Property Changes
+    ['fill-color', 'stroke-color', 'stroke-width', 'opacity', 'font-size'].forEach(id => {
+      document.getElementById(id).addEventListener('change', (e) => {
+        if (!selectedObject) return;
+
+        if (id === 'fill-color') selectedObject.set({ fill: e.target.value });
+        if (id === 'stroke-color') selectedObject.set({ stroke: e.target.value });
+        if (id === 'stroke-width') {
+          selectedObject.set({ strokeWidth: parseInt(e.target.value) });
+          document.getElementById('stroke-width-value').textContent = e.target.value;
+        }
+        if (id === 'font-size' && selectedObject.type === 'i-text') {
+          selectedObject.set({ fontSize: parseInt(e.target.value) });
+          document.getElementById('font-size-value').textContent = e.target.value;
+        }
+        if (id === 'opacity') {
+          selectedObject.set({ opacity: parseInt(e.target.value) / 100 });
+          document.getElementById('opacity-value').textContent = e.target.value + '%';
+        }
+
+        canvas.renderAll();
+      });
+    });
+
+
+
+
+    document.getElementById('bg-color').addEventListener('change', (e) => {
+      canvas.setBackgroundColor(e.target.value, () => canvas.renderAll());
+    });
+
+    // Datos del carnet
+    const cardNameInput = document.getElementById('card-name');
+    const cardCodeInput = document.getElementById('card-code');
+    const cardPositionInput = document.getElementById('card-position');
+    const cardPhotoInput = document.getElementById('card-photo');
+    const cardLogoInput = document.getElementById('card-logo');
+    const replaceImageGroup = document.getElementById('replace-image-group');
+    const replaceImageBtn = document.getElementById('replace-image-btn');
+    const replaceImageInput = document.getElementById('replace-image-input');
+    const photoRoundingGroup = document.getElementById('photo-rounding-group');
+    const photoRadiusInput = document.getElementById('photo-radius');
+    const photoRadiusValue = document.getElementById('photo-radius-value');
+    const userSelect = document.getElementById('user-select');
+    const assignUserBtn = document.getElementById('assign-user-btn');
+    const userSearchInput = document.getElementById('user-search');
+
+    function updateTextElement(element, value) {
+      if (!element) return;
+      element.text = value;
+      element.setCoords();
+      canvas.renderAll();
+      saveHistory();
+      renderLayers();
+    }
+
+    function applyPhotoRadius(target, radius) {
+      if (!target || target !== templateElements.photo) return;
+      target._photoRadius = radius;
+      const width = target.getScaledWidth();
+      const height = target.getScaledHeight();
+      if (radius <= 0) {
+        target.clipPath = null;
+      } else {
+        const rounded = new fabric.Rect({
+          width,
+          height,
+          rx: radius,
+          ry: radius,
+          originX: 'center',
+          originY: 'center',
+          left: target.left,
+          top: target.top,
+          angle: target.angle || 0,
+          absolutePositioned: true
+        });
+        target.clipPath = rounded;
+      }
+      target.setCoords();
+      canvas.renderAll();
+      saveHistory();
+    }
+
+    if (photoRadiusInput) {
+      photoRadiusInput.addEventListener('input', (e) => {
+        const value = parseInt(e.target.value, 10) || 0;
+        if (photoRadiusValue) photoRadiusValue.textContent = value;
+        if (!selectedObject || selectedObject !== templateElements.photo) return;
+        applyPhotoRadius(selectedObject, value);
+      });
+    }
+
+    function cloneClipPath(target, callback) {
+      if (!target || !target.clipPath || typeof target.clipPath.clone !== 'function') {
+        callback(null);
+        return;
+      }
+
+      target.clipPath.clone((cloned) => {
+        if (cloned && target.clipPath && typeof target.clipPath.absolutePositioned !== 'undefined') {
+          cloned.absolutePositioned = target.clipPath.absolutePositioned;
+        }
+        callback(cloned);
+      });
+    }
+
+    function replaceImageWithTarget(target, img) {
+      if (!target) return;
+      const targetIndex = canvas.getObjects().indexOf(target);
+      const frame = target === templateElements.photo ? templateElements.photoFrame : null;
+      const frameMetrics = frame ? getFrameMetrics(frame) : null;
+      const targetWidth = frameMetrics ? frameMetrics.width : target.getScaledWidth();
+      const targetHeight = frameMetrics ? frameMetrics.height : target.getScaledHeight();
+      const coverScale = Math.max(targetWidth / img.width, targetHeight / img.height);
+      const useCover = target === templateElements.photo;
+      const cropWidth = targetWidth / coverScale;
+      const cropHeight = targetHeight / coverScale;
+      const cropX = Math.max(0, (img.width - cropWidth) / 2);
+      const cropY = Math.max(0, (img.height - cropHeight) / 2);
+      const targetCenter = frameMetrics ? frameMetrics.center : target.getCenterPoint();
+
+      img.set({
+        left: useCover ? targetCenter.x : target.left,
+        top: useCover ? targetCenter.y : target.top,
+        originX: useCover ? 'center' : target.originX,
+        originY: useCover ? 'center' : target.originY,
+        angle: target.angle || 0,
+        scaleX: useCover ? coverScale : target.scaleX,
+        scaleY: useCover ? coverScale : target.scaleY,
+        width: useCover ? cropWidth : img.width,
+        height: useCover ? cropHeight : img.height,
+        cropX: useCover ? cropX : 0,
+        cropY: useCover ? cropY : 0,
+        skewX: target.skewX || 0,
+        skewY: target.skewY || 0,
+        flipX: target.flipX || false,
+        flipY: target.flipY || false,
+        opacity: typeof target.opacity === 'number' ? target.opacity : 1,
+        selectable: !!target.selectable,
+        evented: !!target.evented,
+        hasControls: !!target.hasControls,
+        hasBorders: !!target.hasBorders,
+        lockMovementX: target.lockMovementX || false,
+        lockMovementY: target.lockMovementY || false,
+        padding: typeof target.padding === 'number' ? target.padding : 0
+      });
+      img.setCoords();
+      img._isUserEditable = !!target._isUserEditable || target === templateElements.photo;
+      if (img.hasControls && typeof img.setControlsVisibility === 'function') {
+        img.setControlsVisibility({
+          tl: true, tr: true, bl: true, br: true,
+          ml: true, mr: true, mt: true, mb: true,
+          mtr: true
+        });
+      }
+
+      cloneClipPath(target, (clonedClipPath) => {
+        if (useCover) {
+          const radius = typeof target._photoRadius === 'number'
+            ? target._photoRadius
+            : (frameMetrics ? frameMetrics.radius : (clonedClipPath && typeof clonedClipPath.rx === 'number' ? clonedClipPath.rx : 0));
+          if (radius > 0) {
+            img.clipPath = new fabric.Rect({
+              width: targetWidth,
+              height: targetHeight,
+              rx: radius,
+              ry: radius,
+              originX: 'center',
+              originY: 'center',
+              left: targetCenter.x,
+              top: targetCenter.y,
+              angle: frameMetrics ? frameMetrics.angle : (target.angle || 0),
+              absolutePositioned: true
+            });
+          } else {
+            img.clipPath = null;
+          }
+        } else if (clonedClipPath) {
+          img.clipPath = clonedClipPath;
+        }
+        img.setCoords();
+
+        canvas.remove(target);
+        if (targetIndex >= 0) {
+          canvas.insertAt(img, targetIndex);
+        } else {
+          canvas.add(img);
+        }
+
+        if (target === templateElements.photo) templateElements.photo = img;
+        if (target === templateElements.logo) templateElements.logo = img;
+
+        canvas.setActiveObject(img);
+        canvas.renderAll();
+        saveHistory();
+      });
+    }
+
+    cardNameInput.addEventListener('input', (e) => {
+      updateTextElement(templateElements.name, e.target.value);
+    });
+
+    cardCodeInput.addEventListener('input', (e) => {
+      updateTextElement(templateElements.code, e.target.value);
+    });
+
+    cardPositionInput.addEventListener('input', (e) => {
+      updateTextElement(templateElements.position, e.target.value);
+    });
+
+    cardPhotoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file || !templateElements.photo) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        fabric.Image.fromURL(event.target.result, (img) => {
+          replaceImageWithTarget(templateElements.photo, img);
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    cardLogoInput.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        fabric.Image.fromURL(event.target.result, (img) => {
+          if (templateElements.logo) {
+            replaceImageWithTarget(templateElements.logo, img);
+          } else {
+            img.set({
+              left: 20,
+              top: 20,
+              scaleX: 0.2,
+              scaleY: 0.2,
+              selectable: false,
+              evented: false,
+              hasControls: false,
+              hasBorders: false
+            });
+            if (typeof img.setControlsVisibility === 'function') {
+              img.setControlsVisibility({
+                tl: true, tr: true, bl: true, br: true,
+                ml: true, mr: true, mt: true, mb: true,
+                mtr: true
+              });
+            }
+            canvas.add(img);
+            canvas.setActiveObject(img);
+            canvas.renderAll();
+            saveHistory();
+          }
+        });
+      };
+      reader.readAsDataURL(file);
+    });
+
+    function replaceSelectedImage(file) {
+      const selected = canvas.getActiveObject();
+      if (!selected || selected.type !== 'image') return;
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        fabric.Image.fromURL(event.target.result, (img) => {
+          replaceImageWithTarget(selected, img);
+        });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    if (replaceImageBtn && replaceImageInput) {
+      replaceImageBtn.addEventListener('click', () => {
+        const selected = canvas.getActiveObject();
+        if (!selected || selected.type !== 'image') return;
+        replaceImageInput.value = '';
+        replaceImageInput.click();
+      });
+
+      replaceImageInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        replaceSelectedImage(file);
+      });
+    }
+
+    // History
+    function saveHistory() {
+      history = history.slice(0, historyStep + 1);
+      history.push(JSON.stringify(canvas.toJSON()));
+      historyStep++;
+    }
+
+    document.getElementById('undo-btn').addEventListener('click', () => {
+      if (historyStep > 0) {
+        historyStep--;
+        canvas.loadFromJSON(JSON.parse(history[historyStep]), () => canvas.renderAll());
+      }
+    });
+
+    document.getElementById('redo-btn').addEventListener('click', () => {
+      if (historyStep < history.length - 1) {
+        historyStep++;
+        canvas.loadFromJSON(JSON.parse(history[historyStep]), () => canvas.renderAll());
+      }
+    });
+
+    // Delete
+    document.getElementById('delete-btn').addEventListener('click', () => {
+      const selected = canvas.getActiveObject();
+      if (selected) {
+        canvas.remove(selected);
+        saveHistory();
+      }
+    });
+
+    document.getElementById('delete-selected').addEventListener('click', () => {
+      const selected = canvas.getActiveObject();
+      if (selected) {
+        canvas.remove(selected);
+        saveHistory();
+      }
+    });
+
+    // Print
+    document.getElementById('print-btn').addEventListener('click', () => {
+      window.print();
+    });
+
+    // Agregar formas
+    document.querySelectorAll('.shape-item').forEach(item => {
+      item.addEventListener('click', () => {
+        const type = item.dataset.shape;
+        let obj;
+
+        switch(type) {
+          case 'rect':
+            obj = new fabric.Rect({ width: 120, height: 80, fill: '#3b82f6', left: 240, top: 400 });
+            break;
+          case 'circle':
+            obj = new fabric.Circle({ radius: 50, fill: '#3b82f6', left: 250, top: 400 });
+            break;
+          case 'triangle':
+            obj = new fabric.Triangle({ width: 100, height: 100, fill: '#3b82f6', left: 250, top: 400 });
+            break;
+          case 'line':
+            obj = new fabric.Line([0, 0, 200, 0], { stroke: '#3b82f6', strokeWidth: 2, left: 200, top: 450 });
+            break;
+        }
+
+        if (obj) {
+          canvas.add(obj);
+          canvas.setActiveObject(obj);
+          canvas.renderAll();
+          saveHistory();
+        }
+      });
+    });
+
+    // Add Text
+    function addText() {
+      const text = new fabric.IText('Nuevo texto', {
+        fontSize: 20,
+        fill: '#1e293b',
+        left: 150,
+        top: 400
+      });
+      canvas.add(text);
+      canvas.setActiveObject(text);
+      canvas.renderAll();
+      saveHistory();
+    }
+
+    // Upload (opcional)
+    const fileInput = document.getElementById('file-input');
+    if (fileInput) {
+      fileInput.addEventListener('change', (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          if (file.type === 'image/svg+xml') {
+            fabric.loadSVGFromString(event.target.result, (objects, options) => {
+              const obj = fabric.util.groupSVGElements(objects, options);
+              obj.set({ left: 250, top: 400 });
+              canvas.add(obj);
+              canvas.setActiveObject(obj);
+              canvas.renderAll();
+              saveHistory();
+            });
+          } else {
+            fabric.Image.fromURL(event.target.result, (img) => {
+              img.set({ width: 150, height: 150, left: 225, top: 375 });
+              canvas.add(img);
+              canvas.setActiveObject(img);
+              canvas.renderAll();
+              saveHistory();
+            });
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Usuarios
+    document.getElementById('save-user-btn').addEventListener('click', async () => {
+      const user = {
+        id: 'user_' + Date.now(),
+        nombre: document.getElementById('user-nombre').value,
+        cargo: document.getElementById('user-cargo').value,
+        departamento: document.getElementById('user-departamento').value,
+        telefono: document.getElementById('user-telefono').value,
+        email: document.getElementById('user-email').value,
+        created_at: new Date().toISOString()
+      };
+
+      if (!user.nombre.trim()) {
+        alert('Por favor ingresa el nombre');
+        return;
+      }
+
+      const clearUserForm = () => {
+        document.getElementById('user-modal').classList.remove('active');
+        document.getElementById('user-nombre').value = '';
+        document.getElementById('user-cargo').value = '';
+        document.getElementById('user-departamento').value = '';
+        document.getElementById('user-telefono').value = '';
+        document.getElementById('user-email').value = '';
+      };
+
+      const saveUserLocally = () => {
+        users.push(user);
+        localStorage.setItem(localUsersKey, JSON.stringify(users));
+        renderUsers();
+        renderUserSelect();
+        alert('Usuario guardado correctamente');
+        clearUserForm();
+      };
+
+      if (window.dataSdk) {
+        try {
+          const result = await window.dataSdk.create(user);
+          if (result && result.isOk) {
+            alert('Usuario guardado correctamente');
+            clearUserForm();
+            renderUserSelect();
+            return;
+          }
+        } catch (error) {
+          // fallback to local storage
+        }
+        saveUserLocally();
+      } else {
+        saveUserLocally();
+      }
+    });
+
+    function renderUsers() {
+      const list = document.getElementById('users-list');
+      list.innerHTML = '';
+
+      const query = (userSearchInput?.value || '').trim().toLowerCase();
+      const filteredUsers = query
+        ? users.filter(user => {
+            const name = (user.nombre || '').toLowerCase();
+            return name.includes(query);
+          })
+        : users;
+
+      if (filteredUsers.length === 0) {
+        list.innerHTML = '<p style="color: #94a3b8; text-align: center; font-size: 13px;">No hay usuarios guardados</p>';
+        return;
+      }
+
+      filteredUsers.forEach(user => {
+        const div = document.createElement('div');
+        div.className = 'user-item';
+        div.innerHTML = `
+          <div class="user-name">${user.nombre}</div>
+          <div class="user-role">${user.cargo}</div>
+          <div style="margin-top: 8px; display: flex; gap: 8px;">
+            <button style="padding: 6px 10px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px;" onclick="loadUserCard('${user.id}')">Editar carnet</button>
+            <button style="padding: 6px 10px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px;" onclick="deleteUser('${user.id}')">Eliminar</button>
+          </div>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    if (userSearchInput) {
+      userSearchInput.addEventListener('input', () => renderUsers());
+    }
+
+    function renderUserSelect() {
+      if (!userSelect) return;
+      userSelect.innerHTML = '<option value="">Selecciona un usuario</option>';
+      users.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.id;
+        option.textContent = user.nombre;
+        userSelect.appendChild(option);
+      });
+    }
+
+    async function updateUserData(userId, updates) {
+      const user = users.find(u => u.id === userId);
+      if (!user) return;
+      const updated = { ...user, ...updates };
+      if (window.dataSdk && typeof window.dataSdk.update === 'function') {
+        await window.dataSdk.update(userId, updated);
+      } else {
+        users = users.map(u => (u.id === userId ? updated : u));
+        localStorage.setItem(localUsersKey, JSON.stringify(users));
+      }
+      renderUsers();
+      renderUserSelect();
+    }
+
+    if (assignUserBtn) {
+      assignUserBtn.addEventListener('click', async () => {
+        if (!userSelect || !userSelect.value) return;
+        const carnetData = JSON.stringify(canvas.toJSON());
+        await updateUserData(userSelect.value, { carnetData });
+        alert('Carnet asignado al usuario.');
+      });
+    }
+
+    window.loadUserCard = function(userId) {
+      const user = users.find(u => u.id === userId);
+      if (!user || !user.carnetData) return;
+      canvas.loadFromJSON(JSON.parse(user.carnetData), () => {
+        canvas.renderAll();
+        saveHistory();
+        currentModule = 'carnet';
+        switchPanel('carnet');
+      });
+    };
+
+    window.deleteUser = async function(userId) {
+      if (!confirm('¿Eliminar este usuario?')) return;
+      if (window.dataSdk && typeof window.dataSdk.delete === 'function') {
+        await window.dataSdk.delete(userId);
+      } else {
+        users = users.filter(u => u.id !== userId);
+        localStorage.setItem(localUsersKey, JSON.stringify(users));
+        renderUsers();
+        renderUserSelect();
+      }
+    };
+
+    // Plantillas
+    const templateModal = document.getElementById('template-modal');
+    const templateNameInput = document.getElementById('template-name');
+    const templateLogoInput = document.getElementById('template-logo');
+    const templateLogoPreview = document.getElementById('template-logo-preview');
+    const createTemplateBtn = document.getElementById('create-template-btn');
+
+    function openTemplateModal(template = null) {
+      editingTemplateId = template ? template.id : null;
+      templateLogoData = template ? template.logoData || null : null;
+      templateNameInput.value = template ? template.name : '';
+      if (templateLogoPreview) {
+        if (templateLogoData) {
+          templateLogoPreview.src = templateLogoData;
+          templateLogoPreview.style.display = 'block';
+        } else {
+          templateLogoPreview.src = '';
+          templateLogoPreview.style.display = 'none';
+        }
+      }
+      if (templateLogoInput) templateLogoInput.value = '';
+      templateModal.classList.add('active');
+      templateNameInput.focus();
+    }
+
+    if (createTemplateBtn) {
+      createTemplateBtn.addEventListener('click', () => openTemplateModal());
+    }
+
+    if (templateLogoInput) {
+      templateLogoInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+          templateLogoData = reader.result;
+          if (templateLogoPreview) {
+            templateLogoPreview.src = templateLogoData;
+            templateLogoPreview.style.display = 'block';
+          }
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    document.getElementById('confirm-template-btn').addEventListener('click', () => {
+      const name = templateNameInput.value.trim();
+      if (!name) return;
+
+      if (editingTemplateId) {
+        templates = templates.map(t => t.id === editingTemplateId ? {
+          ...t,
+          name,
+          logoData: templateLogoData,
+          data: JSON.stringify(canvas.toJSON())
+        } : t);
+      } else {
+        const template = {
+          id: 'tpl_' + Date.now(),
+          name,
+          logoData: templateLogoData,
+          data: JSON.stringify(canvas.toJSON())
+        };
+        templates.push(template);
+      }
+
+      localStorage.setItem('templates', JSON.stringify(templates));
+      renderTemplates();
+
+      templateModal.classList.remove('active');
+      templateNameInput.value = '';
+      if (templateLogoPreview) {
+        templateLogoPreview.src = '';
+        templateLogoPreview.style.display = 'none';
+      }
+      templateLogoData = null;
+      editingTemplateId = null;
+    });
+
+    function renderTemplates() {
+      const list = document.getElementById('templates-list');
+      list.innerHTML = '';
+
+      if (templates.length === 0) {
+        list.innerHTML = '<p style="color: #94a3b8; text-align: center; font-size: 13px; margin-top: 12px;">No hay plantillas guardadas</p>';
+        return;
+      }
+
+      templates.forEach(template => {
+        const div = document.createElement('div');
+        div.style.cssText = 'padding: 12px; background: #f1f5f9; border-radius: 6px; margin-top: 12px; display: flex; justify-content: space-between; align-items: center; gap: 12px;';
+        const logo = template.logoData
+          ? `<img src="${template.logoData}" alt="logo" style="width: 40px; height: 40px; object-fit: contain; border-radius: 6px; border: 1px solid #e2e8f0; background: #fff;">`
+          : '';
+        div.innerHTML = `
+          <div style="display: flex; align-items: center; gap: 8px;">
+            ${logo}
+            <span style="font-size: 13px; font-weight: 500; color: #1e293b;">${template.name}</span>
+          </div>
+          <div>
+            <button onclick="loadTemplate('${template.id}')" style="padding: 4px 8px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">Cargar</button>
+            <button onclick="editTemplate('${template.id}')" style="padding: 4px 8px; background: #0ea5e9; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">Editar</button>
+            <button onclick="deleteTemplate('${template.id}')" style="padding: 4px 8px; background: #ef4444; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">Eliminar</button>
+          </div>
+        `;
+        list.appendChild(div);
+      });
+    }
+
+    window.loadTemplate = function(templateId) {
+      const template = templates.find(t => t.id === templateId);
+      if (template) {
+        canvas.loadFromJSON(JSON.parse(template.data), () => {
+          canvas.renderAll();
+          saveHistory();
+        });
+      }
+    };
+
+    window.deleteTemplate = function(templateId) {
+      if (confirm('¿Eliminar esta plantilla?')) {
+        templates = templates.filter(t => t.id !== templateId);
+        localStorage.setItem('templates', JSON.stringify(templates));
+        renderTemplates();
+      }
+    };
+
+    window.editTemplate = function(templateId) {
+      const template = templates.find(t => t.id === templateId);
+      if (template) {
+        openTemplateModal(template);
+      }
+    };
+
+    // Clear Canvas
+    document.getElementById('clear-canvas-btn').addEventListener('click', () => {
+      if (confirm('¿Limpiar el canvas? Esta acción no se puede deshacer.')) {
+        canvas.clear();
+        canvas.setBackgroundColor('#ffffff', () => canvas.renderAll());
+        saveHistory();
+      }
+    });
+
+    // Export
+    document.getElementById('export-btn').addEventListener('click', () => {
+      const link = document.createElement('a');
+      link.href = canvas.toDataURL('image/png');
+      link.download = 'carnet_' + Date.now() + '.png';
+      link.click();
+    });
+
+    // Zoom Controls
+    const zoomOutBtn = document.getElementById('zoom-out');
+    const zoomInBtn = document.getElementById('zoom-in');
+    const zoomSelect = document.getElementById('zoom-select');
+    const canvasWrapper = document.getElementById('canvas-wrapper');
+
+    let viewScale = 1;
+    let canvasElement = null;
+
+    function updateZoomLabel() {
+      const percent = Math.round(viewScale * 100);
+      const steps = [50, 75, 100, 125, 150, 200, 300];
+      const closest = steps.reduce((prev, curr) => (Math.abs(curr - percent) < Math.abs(prev - percent) ? curr : prev), steps[0]);
+      zoomSelect.value = String(closest);
+    }
+
+    function setZoom(newZoom) {
+      const clamped = Math.min(3, Math.max(0.3, newZoom));
+      viewScale = clamped;
+      if (canvasElement) {
+        canvasElement.style.transform = `scale(${clamped})`;
+      }
+      if (canvas && canvas.upperCanvasEl) {
+        canvas.upperCanvasEl.style.transform = `scale(${clamped})`;
+        canvas.upperCanvasEl.style.transformOrigin = 'center center';
+      }
+      updateZoomLabel();
+    }
+
+    zoomInBtn.addEventListener('click', () => setZoom(canvas.getZoom() + 0.1));
+    zoomOutBtn.addEventListener('click', () => setZoom(canvas.getZoom() - 0.1));
+    zoomSelect.addEventListener('change', (e) => {
+      const value = parseInt(e.target.value, 10);
+      if (!Number.isNaN(value)) {
+        setZoom(value / 100);
+      }
+    });
+
+    function handleCanvasZoom(event) {
+      if (!event.ctrlKey) return;
+
+      event.preventDefault();
+      const delta = event.deltaY;
+      const zoomFactor = delta > 0 ? 0.9 : 1.1;
+      setZoom(viewScale * zoomFactor);
+    }
+
+    // Listeners se asignan al crear el canvas
+
+    // Data SDK
+    const dataHandler = {
+      onDataChanged(data) {
+        users = data;
+        if (currentModule === 'usuarios') {
+          renderUsers();
+        }
+        renderUserSelect();
+      }
+    };
+
+    // Initialize
+    async function init() {
+      initCanvas();
+      setZoom(1.5);
+
+      if (window.dataSdk) {
+        await window.dataSdk.init(dataHandler);
+      } else {
+        renderUsers();
+        renderUserSelect();
+      }
+    }
+
+    init();
+  </script>
+ </body>
+</html>
