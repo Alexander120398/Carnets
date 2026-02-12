@@ -839,6 +839,28 @@
       </div>
       <div class="property-section"><span class="property-section-title">Acciones</span> <button id="export-btn" style="width: 100%; padding: 12px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; margin-bottom: 12px;">Exportar Carnet</button> <button id="clear-canvas-btn" style="width: 100%; padding: 12px; background: #ef4444; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Limpiar Canvas</button>
       </div>
+        <div class="property-section" id="roles-section" style="margin-top: 16px;">
+         <span class="property-section-title">Accesos y roles</span>
+         <div class="property-group">
+          <label class="property-label">Email</label>
+          <input type="email" class="property-input" id="role-email" placeholder="usuario@empresa.com">
+         </div>
+         <div class="property-group">
+          <label class="property-label">Contrasena</label>
+          <input type="password" class="property-input" id="role-password" placeholder="Minimo 6 caracteres">
+         </div>
+         <div class="property-group">
+          <label class="property-label">Rol</label>
+          <select class="property-input" id="role-select">
+           <option value="operator">Operador</option>
+           <option value="admin">Admin</option>
+          </select>
+         </div>
+         <div class="property-group">
+          <button id="create-role-user" style="width: 100%; padding: 12px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">Crear usuario</button>
+         </div>
+         <div class="users-list" id="roles-list"></div>
+        </div>
      </div>
       </div><!-- Plantillas Panel -->
       <div id="plantillas-panel" class="panel-content plantillas-compact" style="display: none;">
@@ -890,6 +912,7 @@
     const localUsersKey = 'local_users';
     let users = JSON.parse(localStorage.getItem(localUsersKey)) || [];
     let templates = JSON.parse(localStorage.getItem('templates')) || [];
+    let roleProfiles = [];
     let editingTemplateId = null;
     let templateLogoData = null;
     let currentModule = 'carnet';
@@ -937,9 +960,11 @@
       const newUserBtn = document.getElementById('new-user-btn');
       const createTemplateButton = document.getElementById('create-template-btn');
       const assignButton = document.getElementById('assign-user-btn');
+      const rolesSection = document.getElementById('roles-section');
       if (newUserBtn) newUserBtn.disabled = !canManageUsers();
       if (createTemplateButton) createTemplateButton.disabled = !canManageTemplates();
       if (assignButton) assignButton.disabled = !isCloudEnabled();
+      if (rolesSection) rolesSection.style.display = hasRole('admin') ? 'block' : 'none';
     }
 
     async function ensureProfile(user) {
@@ -985,11 +1010,28 @@
       }
     }
 
+    async function loadRoleProfiles() {
+      if (!isCloudEnabled() || !hasRole('admin')) return;
+      const { data, error } = await supabaseClient
+        .from('profiles')
+        .select('id,email,role,created_at')
+        .order('created_at', { ascending: false });
+      if (!error && data) {
+        roleProfiles = data;
+      }
+    }
+
     async function syncCloudData() {
       await Promise.all([loadUsersFromCloud(), loadTemplatesFromCloud()]);
+      if (hasRole('admin')) {
+        await loadRoleProfiles();
+      } else {
+        roleProfiles = [];
+      }
       renderUsers();
       renderUserSelect();
       renderTemplates();
+      renderRoleProfiles();
     }
 
     async function initAuth() {
@@ -1527,12 +1569,111 @@
     const userSelect = document.getElementById('user-select');
     const assignUserBtn = document.getElementById('assign-user-btn');
     const userSearchInput = document.getElementById('user-search');
+    const roleEmailInput = document.getElementById('role-email');
+    const rolePasswordInput = document.getElementById('role-password');
+    const roleSelect = document.getElementById('role-select');
+    const createRoleUserBtn = document.getElementById('create-role-user');
+    const rolesList = document.getElementById('roles-list');
 
     if (authLogoutBtn) {
       authLogoutBtn.addEventListener('click', async () => {
         if (!supabaseClient) return;
         await supabaseClient.auth.signOut();
         window.location.href = 'login.html';
+      });
+    }
+
+    function renderRoleProfiles() {
+      if (!rolesList) return;
+      rolesList.innerHTML = '';
+
+      if (!hasRole('admin')) {
+        rolesList.innerHTML = '<p style="color: #94a3b8; text-align: center; font-size: 13px;">Solo admin puede gestionar roles</p>';
+        return;
+      }
+
+      if (roleProfiles.length === 0) {
+        rolesList.innerHTML = '<p style="color: #94a3b8; text-align: center; font-size: 13px;">No hay usuarios con roles</p>';
+        return;
+      }
+
+      roleProfiles.forEach(profile => {
+        const row = document.createElement('div');
+        row.className = 'user-item';
+        const email = profile.email || 'Sin email';
+        row.innerHTML = `
+          <div class="user-name">${email}</div>
+          <div class="user-role">Rol actual: ${profile.role || 'operator'}</div>
+          <div style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
+            <select class="property-input" data-role-select="${profile.id}" style="flex: 1;">
+              <option value="operator" ${profile.role === 'operator' ? 'selected' : ''}>Operador</option>
+              <option value="admin" ${profile.role === 'admin' ? 'selected' : ''}>Admin</option>
+            </select>
+            <button class="toolbar-btn" data-role-save="${profile.id}" title="Guardar" style="width: 36px; height: 36px;">💾</button>
+          </div>
+        `;
+        rolesList.appendChild(row);
+      });
+
+      rolesList.querySelectorAll('[data-role-save]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const profileId = btn.getAttribute('data-role-save');
+          const select = rolesList.querySelector(`[data-role-select="${profileId}"]`);
+          if (!select || !profileId) return;
+          const newRole = select.value;
+          const { error } = await supabaseClient
+            .from('profiles')
+            .update({ role: newRole })
+            .eq('id', profileId);
+          if (error) {
+            alert(error.message || 'No se pudo actualizar el rol.');
+            return;
+          }
+          roleProfiles = roleProfiles.map(p => (p.id === profileId ? { ...p, role: newRole } : p));
+          renderRoleProfiles();
+        });
+      });
+    }
+
+    if (createRoleUserBtn) {
+      createRoleUserBtn.addEventListener('click', async () => {
+        if (!supabaseClient || !isCloudEnabled()) {
+          alert('Inicia sesion para crear usuarios.');
+          return;
+        }
+        if (!hasRole('admin')) {
+          alert('Solo admin puede crear usuarios con rol.');
+          return;
+        }
+        const email = (roleEmailInput?.value || '').trim();
+        const password = rolePasswordInput?.value || '';
+        const role = roleSelect?.value || 'operator';
+        if (!email || !password) {
+          alert('Completa email y contrasena.');
+          return;
+        }
+
+        const { data, error } = await supabaseClient.auth.signUp({ email, password });
+        if (error) {
+          alert(error.message);
+          return;
+        }
+
+        if (data?.user?.id) {
+          const { error: profileError } = await supabaseClient
+            .from('profiles')
+            .upsert({ id: data.user.id, email, role });
+          if (profileError) {
+            alert(profileError.message || 'No se pudo asignar el rol.');
+            return;
+          }
+        }
+
+        roleEmailInput.value = '';
+        rolePasswordInput.value = '';
+        await loadRoleProfiles();
+        renderRoleProfiles();
+        alert('Usuario creado.');
       });
     }
 
