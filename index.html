@@ -1337,6 +1337,16 @@
                 lockMovementY: false
               });
               editable._isUserEditable = true;
+            } else {
+              editable.set({
+                selectable: false,
+                evented: false,
+                hasControls: false,
+                hasBorders: false,
+                lockMovementX: true,
+                lockMovementY: true
+              });
+              editable._isUserEditable = false;
             }
 
             editable.setCoords();
